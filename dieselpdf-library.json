@@ -1,0 +1,851 @@
+[
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 1,
+        "kind": "Line",
+        "detail": "straight line",
+        "group": "group_1",
+        "flattened": false,
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              100.0,
+              190.0,
+              220.0,
+              250.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "kind": "Circle",
+        "detail": "ellipse/circle",
+        "group": "group_1",
+        "flattened": false,
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              104.0,
+              194.0,
+              224.0,
+              254.0
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 1,
+        "kind": "Line",
+        "detail": "straight line",
+        "group": "group_1",
+        "flattened": false,
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              100.0,
+              190.0,
+              220.0,
+              250.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "kind": "Circle",
+        "detail": "ellipse/circle",
+        "group": "group_1",
+        "flattened": false,
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              104.0,
+              194.0,
+              224.0,
+              254.0
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 17,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              320.0,
+              410.0,
+              440.0,
+              470.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "kind": "Circle Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              324.0,
+              414.0,
+              444.0,
+              474.0
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 17,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              320.0,
+              410.0,
+              440.0,
+              470.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "kind": "Circle Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              324.0,
+              414.0,
+              444.0,
+              474.0
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 17,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              320.0,
+              410.0,
+              440.0,
+              470.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "kind": "Circle Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              324.0,
+              414.0,
+              444.0,
+              474.0
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 17,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              321.40625,
+              411.7647058823529,
+              497.65625,
+              507.05882352941177
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "kind": "Circle Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              327.28125,
+              418.11764705882354,
+              503.53125,
+              513.4117647058823
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 17,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              321.40625,
+              411.7647058823529,
+              497.65625,
+              507.05882352941177
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "kind": "Circle Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              327.28125,
+              418.11764705882354,
+              503.53125,
+              513.4117647058823
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 17,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              321.40625,
+              411.7647058823529,
+              497.65625,
+              507.05882352941177
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "kind": "Circle Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "oval",
+            "coords": [
+              327.28125,
+              418.11764705882354,
+              503.53125,
+              513.4117647058823
+            ],
+            "fill": "",
+            "outline": "#ff0000",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 16,
+        "kind": "Calibration Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              352.0,
+              442.0,
+              472.0,
+              502.0
+            ],
+            "fill": "#0071e3",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "both",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          },
+          {
+            "type": "text",
+            "coords": [
+              412.0,
+              458.0
+            ],
+            "fill": "#0071e3",
+            "outline": "",
+            "width": "0",
+            "dash": "",
+            "arrow": "",
+            "text": "Scale: 100 mm",
+            "font": "Arial 12 bold",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 16,
+        "kind": "Cloud Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              328.0,
+              418.0,
+              340.0,
+              412.0,
+              352.0,
+              418.0,
+              364.0,
+              412.0,
+              376.0,
+              418.0,
+              388.0,
+              412.0,
+              400.0,
+              418.0,
+              412.0,
+              412.0,
+              424.0,
+              418.0,
+              436.0,
+              412.0,
+              448.0,
+              418.0,
+              448.0,
+              418.0,
+              454.0,
+              430.0,
+              448.0,
+              442.0,
+              454.0,
+              454.0,
+              448.0,
+              466.0,
+              454.0,
+              478.0,
+              448.0,
+              478.0,
+              436.0,
+              484.0,
+              424.0,
+              478.0,
+              412.0,
+              484.0,
+              400.0,
+              478.0,
+              388.0,
+              484.0,
+              376.0,
+              478.0,
+              364.0,
+              484.0,
+              352.0,
+              478.0,
+              340.0,
+              484.0,
+              328.0,
+              478.0,
+              328.0,
+              478.0,
+              322.0,
+              466.0,
+              328.0,
+              454.0,
+              322.0,
+              442.0,
+              328.0,
+              430.0,
+              322.0,
+              418.0,
+              328.0,
+              418.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 19,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              920.0,
+              740.0,
+              920.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              955.0,
+              740.0,
+              955.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 19,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              920.0,
+              740.0,
+              920.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              955.0,
+              740.0,
+              955.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 19,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              920.0,
+              740.0,
+              920.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              955.0,
+              740.0,
+              955.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Smoke Library Group",
+    "entries": [
+      {
+        "id": 19,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              920.0,
+              740.0,
+              920.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "kind": "Line Copy Offset",
+        "detail": "offset 100",
+        "group": null,
+        "flattened": false,
+        "layer": "0",
+        "objects": [
+          {
+            "type": "line",
+            "coords": [
+              580.0,
+              955.0,
+              740.0,
+              955.0
+            ],
+            "fill": "#ff0000",
+            "outline": "",
+            "width": "2.0",
+            "dash": "",
+            "arrow": "none",
+            "text": "",
+            "font": "",
+            "stipple": ""
+          }
+        ]
+      }
+    ]
+  }
+]
