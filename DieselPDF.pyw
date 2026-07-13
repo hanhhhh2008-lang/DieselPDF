@@ -3,6 +3,7 @@ import json
 import math
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -14,7 +15,8 @@ APP_TITLE = "DieselPDF"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 VENDOR_DIR = os.path.join(APP_DIR, "vendor")
 PDF_VENDOR_DIR = os.path.join(APP_DIR, "vendor_pymupdf")
-for dependency_dir in [VENDOR_DIR, PDF_VENDOR_DIR]:
+CAD_VENDOR_DIR = os.path.join(APP_DIR, "vendor_cad_py311")
+for dependency_dir in [CAD_VENDOR_DIR, PDF_VENDOR_DIR, VENDOR_DIR]:
     if os.path.isdir(dependency_dir) and dependency_dir not in sys.path:
         sys.path.insert(0, dependency_dir)
 LIBRARY_PATH = os.path.join(APP_DIR, "dieselpdf-library.json")
@@ -91,6 +93,10 @@ ICON = {
     "Move": "\u2725",
     "Copy": "\u29c9",
     "Offset": "\u22d4",
+    "CAD to Text": "\u25a4",
+    "Text to CAD": "\u270e",
+    "PDF to CAD": "\u21f2",
+    "Export DXF": "\u21e7",
     "Delete": "\u2715",
     "Insert": "\u229e",
     "Extract": "\u21e5",
@@ -459,6 +465,10 @@ class DieselPDF(tk.Tk):
         self._cmd_button(cad, "Move", self.move_selected)
         self._cmd_button(cad, "Copy", self.copy_selected)
         self._cmd_button(cad, "Offset", self.offset_selected)
+        self._cmd_button(cad, "CAD to Text", self.cad_to_text)
+        self._cmd_button(cad, "Text to CAD", self.text_to_cad_pdf)
+        self._cmd_button(cad, "PDF to CAD", self.pdf_to_cad)
+        self._cmd_button(cad, "Export DXF", self.export_current_page_dxf)
         self._cmd_button(cad, "Delete", self.delete_selected)
 
         pages = self._group("Pages")
@@ -1135,7 +1145,13 @@ class DieselPDF(tk.Tk):
             self.run_ai_command(command)
 
     def run_ai_command(self, command):
-        text = command.strip().lower()
+        raw = command.strip()
+        text = raw.lower()
+        try:
+            tokens = shlex.split(raw)
+        except ValueError:
+            tokens = raw.split()
+        first = tokens[0].lower() if tokens else ""
         numbers = [float(value) for value in re.findall(r"-?\d+(?:\.\d+)?", text)]
         aliases = {
             "l": "line",
@@ -1157,8 +1173,49 @@ class DieselPDF(tk.Tk):
             "move": "move",
             "o": "offset",
             "offset": "offset",
+            "t": "text",
+            "text": "text",
+            "tb": "text_box",
+            "textbox": "text_box",
+            "callout": "callout",
+            "help": "help",
+            "?": "help",
         }
-        first = text.split()[0] if text.split() else ""
+
+        if first in {"help", "?"}:
+            self._command_help()
+            return
+        if first in {"osnap", "snap"}:
+            self._run_snap_command(tokens)
+            return
+        if first in {"otrack", "ot"}:
+            self._run_bool_command(self.otrack_var, "OTRACK", tokens)
+            return
+        if first in {"ortho", "or"}:
+            self._run_bool_command(self.ortho_var, "ORTHO", tokens)
+            return
+        if first in {"cadtext", "cad2text", "dxftext", "cad-to-text"}:
+            self.cad_to_text()
+            return
+        if first in {"textcad", "text2cad", "text-to-cad", "textpdf", "text2pdf"}:
+            self.text_to_cad_pdf()
+            return
+        if first in {"pdfcad", "pdf2cad", "pdf-to-cad"}:
+            self.pdf_to_cad()
+            return
+        if first in {"exportdxf", "savedxf", "dxf"}:
+            self.export_current_page_dxf()
+            return
+        if first in {"exportpdf", "savepdf"}:
+            self.export_current_page_pdf()
+            return
+        if first in {"openpdf", "pdfopen"}:
+            self.open_pdf()
+            return
+        if first in {"save", "qsave"}:
+            self.save_project()
+            return
+
         tool = aliases.get(first)
         if "draw" in text and "line" in text:
             tool = "line"
@@ -1183,14 +1240,139 @@ class DieselPDF(tk.Tk):
         if tool in {"copy", "move", "offset"}:
             {"copy": self.copy_selected, "move": self.move_selected, "offset": self.offset_selected}[tool]()
             return
-        if tool in {"line", "rectangle", "circle", "distance", "area"} and len(numbers) >= 4:
+        if tool == "circle" and len(numbers) >= 3:
+            x, y, radius = numbers[:3]
+            self.create_shape("circle", x - radius, y - radius, x + radius, y + radius)
+            self._set_status("Command drew circle")
+            return
+        if tool in {"line", "arrow", "rectangle", "distance", "perimeter", "area"} and len(numbers) >= 4:
             self.create_shape(tool, numbers[0], numbers[1], numbers[2], numbers[3])
-            self._set_status(f"AI command drew {tool}")
+            self._set_status(f"Command drew {tool}")
+            return
+        if tool == "polyline" and len(numbers) >= 4:
+            self._create_polyline_from_coords(numbers)
+            return
+        if tool == "polygon" and len(numbers) >= 6:
+            self._create_polygon_from_coords(numbers)
+            return
+        if tool == "text" and len(numbers) >= 2:
+            self._create_command_text(raw, numbers[0], numbers[1])
             return
         if tool:
             self._set_tool(tool)
             return
-        self._set_status("Command not understood. Try: L, LINE 100 100 300 100, RECT 100 100 250 180, LAYER Existing")
+        self._set_status("Unknown command. Try HELP, L 100 100 300 100, OSNAP END MID, PDFCAD, CADTEXT, TEXTCAD")
+
+    def _command_help(self):
+        self._set_status("Commands: L/LINE, REC, CIRCLE x y r, PL/PLINE, TEXT x y words, OSNAP, ORTHO, OTRACK, CADTEXT, TEXTCAD, PDFCAD, EXPORTDXF")
+
+    def _run_bool_command(self, variable, label, tokens):
+        value = not variable.get()
+        if len(tokens) >= 2:
+            value = tokens[1].lower() in {"1", "on", "yes", "true", "enable", "enabled"}
+        variable.set(value)
+        self._set_status(f"{label} {'ON' if value else 'OFF'}")
+
+    def _run_snap_command(self, tokens):
+        if len(tokens) == 1:
+            active = [name for name, var in self.snap_vars.items() if var.get()]
+            self._set_status("OSNAP active: " + (", ".join(active) if active else "OFF"))
+            return
+        snap_aliases = {
+            "end": "Endpoint",
+            "endpoint": "Endpoint",
+            "mid": "Midpoint",
+            "midpoint": "Midpoint",
+            "int": "Intersection",
+            "intersection": "Intersection",
+            "app": "Apparent Intersection",
+            "apparent": "Apparent Intersection",
+            "ext": "Extension",
+            "extension": "Extension",
+            "cen": "Center",
+            "center": "Center",
+            "geo": "Geometric Center",
+            "geometric": "Geometric Center",
+            "tan": "Tangent",
+            "tangent": "Tangent",
+            "qua": "Quadrant",
+            "quadrant": "Quadrant",
+            "per": "Perpendicular",
+            "perpendicular": "Perpendicular",
+            "nod": "Node",
+            "node": "Node",
+            "nea": "Nearest",
+            "nearest": "Nearest",
+            "par": "Parallel",
+            "parallel": "Parallel",
+            "ins": "Insertion",
+            "insertion": "Insertion",
+        }
+        requested = [token.lower() for token in tokens[1:]]
+        if requested[0] in {"off", "0", "false"}:
+            for var in self.snap_vars.values():
+                var.set(False)
+            self.update_snap_indicator()
+            self._set_status("OSNAP OFF")
+            return
+        if requested[0] in {"on", "1", "true"}:
+            for name in ["Endpoint", "Midpoint", "Intersection", "Nearest"]:
+                self.snap_vars[name].set(True)
+            self.update_snap_indicator()
+            self._set_status("OSNAP ON")
+            return
+        if requested[0] == "all":
+            for var in self.snap_vars.values():
+                var.set(True)
+            self.update_snap_indicator()
+            self._set_status("OSNAP ALL")
+            return
+        for var in self.snap_vars.values():
+            var.set(False)
+        enabled = []
+        for token in requested:
+            name = snap_aliases.get(token)
+            if name and name in self.snap_vars:
+                self.snap_vars[name].set(True)
+                enabled.append(name)
+        self.update_snap_indicator()
+        self._set_status("OSNAP set: " + (", ".join(enabled) if enabled else "OFF"))
+
+    def _create_polyline_from_coords(self, numbers):
+        coords = numbers[:len(numbers) - (len(numbers) % 2)]
+        if len(coords) < 4:
+            self._set_status("Polyline needs at least two points")
+            return
+        style = self._style()
+        item = self.canvas.create_line(coords, fill=style["line_color"], width=style["width"], dash=self._dash())
+        self._record_entry("Polyline", "command polyline", [item])
+
+    def _create_polygon_from_coords(self, numbers):
+        coords = numbers[:len(numbers) - (len(numbers) % 2)]
+        if len(coords) < 6:
+            self._set_status("Polygon needs at least three points")
+            return
+        style = self._style()
+        item = self.canvas.create_polygon(coords, outline=style["line_color"], fill=style["fill_color"], width=style["width"], dash=self._dash())
+        self._record_entry("Polygon", "command polygon", [item])
+
+    def _create_command_text(self, raw, x, y):
+        parts = raw.split()
+        words = []
+        numbers_seen = 0
+        for part in parts[1:]:
+            if numbers_seen < 2:
+                try:
+                    float(part)
+                    numbers_seen += 1
+                    continue
+                except ValueError:
+                    pass
+            words.append(part)
+        text = " ".join(words).strip() or "Text"
+        style = self._style()
+        item = self.canvas.create_text(x, y, text=text, anchor="nw", fill=style["line_color"], font=(style["font_family"], style["font_size"]))
+        self._record_entry("Text", text, [item])
 
     def _current_entries(self):
         return self.pages[self.current_page]["entries"]
@@ -2588,6 +2770,451 @@ class DieselPDF(tk.Tk):
             return tuple(int(float(part)) for part in str(dash).split())
         except ValueError:
             return None
+
+    def _cad_backend(self):
+        try:
+            import ezdxf
+            return ezdxf
+        except Exception as exc:
+            messagebox.showerror("CAD module", f"CAD module needs ezdxf in vendor_cad_py311.\n\n{exc}")
+            return None
+
+    def _cad_scale(self):
+        return self.scale_units_per_px if self.scale_units_per_px else 1.0
+
+    def _canvas_to_cad(self, x, y):
+        x0, y0, _x1, _y1 = self._page_bbox()
+        scale = self._cad_scale()
+        return (x - x0) * scale, (self.page_h - (y - y0)) * scale
+
+    def _cad_to_canvas(self, x, y):
+        x0, y0, _x1, _y1 = self._page_bbox()
+        scale = self._cad_scale() or 1.0
+        return x0 + (x / scale), y0 + self.page_h - (y / scale)
+
+    def _cad_layer_name(self, name):
+        clean = re.sub(r"[^A-Za-z0-9_$ -]+", "_", str(name or "0")).strip()
+        return clean[:250] or "0"
+
+    def _cad_units_code(self):
+        return {"mm": 4, "cm": 5, "m": 6}.get(self.scale_unit or self.unit_var.get(), 4)
+
+    def _entries_to_cad_commands(self, entries):
+        commands = []
+        for entry in entries:
+            if not self._layer_visible(entry.get("layer", "0")):
+                continue
+            layer = self._cad_layer_name(entry.get("layer", "0"))
+            for item in entry["items"]:
+                if self.canvas.itemcget(item, "state") == "hidden":
+                    continue
+                item_type = self.canvas.type(item)
+                coords = self.canvas.coords(item)
+                if item_type == "line" and len(coords) >= 4:
+                    points = [self._canvas_to_cad(coords[i], coords[i + 1]) for i in range(0, len(coords), 2)]
+                    if len(points) == 2:
+                        commands.append({"type": "line", "points": points, "layer": layer})
+                    else:
+                        commands.append({"type": "polyline", "points": points, "layer": layer})
+                elif item_type == "rectangle" and len(coords) >= 4:
+                    x0, y0, x1, y1 = coords[:4]
+                    p1 = self._canvas_to_cad(x0, y0)
+                    p2 = self._canvas_to_cad(x1, y1)
+                    commands.append({"type": "rect", "points": [p1, p2], "layer": layer})
+                elif item_type == "oval" and len(coords) >= 4:
+                    x0, y0, x1, y1 = coords[:4]
+                    cx, cy = self._canvas_to_cad((x0 + x1) / 2, (y0 + y1) / 2)
+                    rx = abs(x1 - x0) * self._cad_scale() / 2
+                    ry = abs(y1 - y0) * self._cad_scale() / 2
+                    commands.append({"type": "ellipse", "center": (cx, cy), "rx": rx, "ry": ry, "layer": layer})
+                elif item_type == "polygon" and len(coords) >= 6:
+                    points = [self._canvas_to_cad(coords[i], coords[i + 1]) for i in range(0, len(coords), 2)]
+                    commands.append({"type": "polygon", "points": points, "layer": layer})
+                elif item_type == "text" and len(coords) >= 2:
+                    x, y = self._canvas_to_cad(coords[0], coords[1])
+                    commands.append({
+                        "type": "text",
+                        "point": (x, y),
+                        "text": self._item_option(item, "text") or "",
+                        "height": self._text_height(item),
+                        "layer": layer,
+                    })
+        return commands
+
+    def _text_height(self, item):
+        font = self._item_option(item, "font")
+        match = re.search(r"\b(\d+)\b", str(font))
+        return max(1.0, float(match.group(1)) if match else self._safe_float(self.font_size_var.get(), 12))
+
+    def _write_cad_commands_dxf(self, commands, path):
+        ezdxf = self._cad_backend()
+        if not ezdxf:
+            return False
+        doc = ezdxf.new(dxfversion="R2010")
+        doc.header["$INSUNITS"] = self._cad_units_code()
+        for layer in {self._cad_layer_name(cmd.get("layer", "0")) for cmd in commands} | {self._cad_layer_name(layer["name"]) for layer in self.layers}:
+            try:
+                if layer not in doc.layers:
+                    doc.layers.add(layer)
+            except Exception:
+                pass
+        msp = doc.modelspace()
+        for cmd in commands:
+            layer = self._cad_layer_name(cmd.get("layer", "0"))
+            attribs = {"layer": layer}
+            kind = cmd.get("type")
+            if kind == "line":
+                p1, p2 = cmd["points"][:2]
+                msp.add_line(p1, p2, dxfattribs=attribs)
+            elif kind == "polyline":
+                msp.add_lwpolyline(cmd["points"], dxfattribs=attribs)
+            elif kind == "polygon":
+                msp.add_lwpolyline(cmd["points"], close=True, dxfattribs=attribs)
+            elif kind == "rect":
+                (x0, y0), (x1, y1) = cmd["points"][:2]
+                msp.add_lwpolyline([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], close=True, dxfattribs=attribs)
+            elif kind == "circle":
+                msp.add_circle(cmd["center"], cmd["radius"], dxfattribs=attribs)
+            elif kind == "ellipse":
+                rx = max(0.001, float(cmd.get("rx", 1)))
+                ry = max(0.001, float(cmd.get("ry", rx)))
+                if abs(rx - ry) < 0.001:
+                    msp.add_circle(cmd["center"], rx, dxfattribs=attribs)
+                else:
+                    major = max(rx, ry)
+                    minor = min(rx, ry)
+                    major_axis = (major if rx >= ry else 0, major if ry > rx else 0)
+                    msp.add_ellipse(cmd["center"], major_axis=major_axis, ratio=minor / major, dxfattribs=attribs)
+            elif kind == "text":
+                text = msp.add_text(str(cmd.get("text", "")), dxfattribs={**attribs, "height": max(1.0, float(cmd.get("height", 12)))})
+                text.dxf.insert = cmd.get("point", (0, 0))
+        doc.saveas(path)
+        return True
+
+    def export_current_page_dxf(self, path=None):
+        if path is None:
+            path = filedialog.asksaveasfilename(defaultextension=".dxf", filetypes=[("DXF CAD", "*.dxf")], initialfile="DieselPDF-page.dxf")
+        if not path:
+            return False
+        commands = self._entries_to_cad_commands(self._current_entries())
+        if not commands:
+            self._set_status("No markups to export as DXF")
+            return False
+        if self._write_cad_commands_dxf(commands, path):
+            self._set_status(f"Exported DXF: {os.path.basename(path)}")
+            return True
+        return False
+
+    def _write_cad_commands_pdf(self, commands, path):
+        fitz = self._pdf_renderer()
+        if not fitz:
+            messagebox.showerror("Text to PDF", "PDF export needs PyMuPDF.")
+            return False
+        points = []
+        for cmd in commands:
+            if "points" in cmd:
+                points.extend(cmd["points"])
+            if "center" in cmd:
+                cx, cy = cmd["center"]
+                radius = max(cmd.get("radius", 0), cmd.get("rx", 0), cmd.get("ry", 0))
+                points.extend([(cx - radius, cy - radius), (cx + radius, cy + radius)])
+            if "point" in cmd:
+                points.append(cmd["point"])
+        if not points:
+            return False
+        min_x = min(p[0] for p in points)
+        max_x = max(p[0] for p in points)
+        min_y = min(p[1] for p in points)
+        max_y = max(p[1] for p in points)
+        margin = 36
+        width = max(300, max_x - min_x + margin * 2)
+        height = max(300, max_y - min_y + margin * 2)
+
+        def pt(point):
+            x, y = point
+            return fitz.Point(margin + x - min_x, margin + max_y - y)
+
+        doc = fitz.open()
+        page = doc.new_page(width=width, height=height)
+        black = (0, 0, 0)
+        for cmd in commands:
+            kind = cmd.get("type")
+            if kind == "line":
+                page.draw_line(pt(cmd["points"][0]), pt(cmd["points"][1]), color=black, width=1)
+            elif kind == "polyline":
+                pts = [pt(point) for point in cmd["points"]]
+                for start, end in zip(pts, pts[1:]):
+                    page.draw_line(start, end, color=black, width=1)
+            elif kind == "polygon":
+                pts = [pt(point) for point in cmd["points"]]
+                for start, end in zip(pts, pts[1:] + pts[:1]):
+                    page.draw_line(start, end, color=black, width=1)
+            elif kind == "rect":
+                p0, p1 = pt(cmd["points"][0]), pt(cmd["points"][1])
+                page.draw_rect(fitz.Rect(p0, p1), color=black, width=1)
+            elif kind == "circle":
+                page.draw_circle(pt(cmd["center"]), cmd["radius"], color=black, width=1)
+            elif kind == "ellipse":
+                cx, cy = cmd["center"]
+                rx = cmd.get("rx", 1)
+                ry = cmd.get("ry", rx)
+                p0 = pt((cx - rx, cy + ry))
+                p1 = pt((cx + rx, cy - ry))
+                page.draw_oval(fitz.Rect(p0, p1), color=black, width=1)
+            elif kind == "text":
+                page.insert_text(pt(cmd.get("point", (0, 0))), str(cmd.get("text", "")), fontsize=max(6, float(cmd.get("height", 12))), color=black)
+        doc.save(path)
+        doc.close()
+        return True
+
+    def export_current_page_pdf(self, path=None):
+        if path is None:
+            path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile="DieselPDF-page.pdf")
+        if not path:
+            return False
+        commands = self._entries_to_cad_commands(self._current_entries())
+        if not commands:
+            self._set_status("No markups to export as PDF")
+            return False
+        if self._write_cad_commands_pdf(commands, path):
+            self._set_status(f"Exported PDF: {os.path.basename(path)}")
+            return True
+        return False
+
+    def cad_to_text(self, cad_path=None, text_path=None):
+        ezdxf = self._cad_backend()
+        if not ezdxf:
+            return False
+        if cad_path is None:
+            cad_path = filedialog.askopenfilename(filetypes=[("DXF CAD", "*.dxf"), ("All files", "*.*")])
+        if not cad_path:
+            return False
+        try:
+            doc = ezdxf.readfile(cad_path)
+            lines = self._dxf_to_text_lines(doc, cad_path)
+        except Exception as exc:
+            messagebox.showerror("CAD to Text", str(exc))
+            return False
+        if text_path is None:
+            base = os.path.splitext(os.path.basename(cad_path))[0] + ".txt"
+            text_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")], initialfile=base)
+        if not text_path:
+            return False
+        with open(text_path, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+        self._set_status(f"CAD text exported: {os.path.basename(text_path)}")
+        return True
+
+    def _dxf_to_text_lines(self, doc, source_path):
+        lines = [f"CAD TEXT REPORT: {os.path.basename(source_path)}", f"Units: {doc.header.get('$INSUNITS', 'not set')}", ""]
+        counts = {}
+        for entity in doc.modelspace():
+            kind = entity.dxftype()
+            counts[kind] = counts.get(kind, 0) + 1
+            layer = getattr(entity.dxf, "layer", "0")
+            try:
+                if kind == "LINE":
+                    lines.append(f"LINE layer={layer} start={tuple(entity.dxf.start)} end={tuple(entity.dxf.end)}")
+                elif kind == "LWPOLYLINE":
+                    pts = [(round(p[0], 4), round(p[1], 4)) for p in entity.get_points("xy")]
+                    lines.append(f"LWPOLYLINE layer={layer} points={pts}")
+                elif kind == "CIRCLE":
+                    lines.append(f"CIRCLE layer={layer} center={tuple(entity.dxf.center)} radius={entity.dxf.radius}")
+                elif kind == "ARC":
+                    lines.append(f"ARC layer={layer} center={tuple(entity.dxf.center)} radius={entity.dxf.radius} start={entity.dxf.start_angle} end={entity.dxf.end_angle}")
+                elif kind == "TEXT":
+                    lines.append(f"TEXT layer={layer} at={tuple(entity.dxf.insert)} text={entity.dxf.text}")
+                elif kind == "MTEXT":
+                    lines.append(f"MTEXT layer={layer} at={tuple(entity.dxf.insert)} text={entity.plain_text()}")
+                elif kind == "INSERT":
+                    lines.append(f"INSERT layer={layer} block={entity.dxf.name} at={tuple(entity.dxf.insert)}")
+                else:
+                    lines.append(f"{kind} layer={layer}")
+            except Exception:
+                lines.append(f"{kind} layer={layer}")
+        lines.insert(2, "Entity counts: " + ", ".join(f"{name}={count}" for name, count in sorted(counts.items())))
+        return lines
+
+    def text_to_cad_pdf(self, text_path=None, dxf_path=None, pdf_path=None):
+        if text_path is None:
+            text_path = filedialog.askopenfilename(filetypes=[("Text CAD script", "*.txt"), ("All files", "*.*")])
+        if not text_path:
+            return False
+        try:
+            with open(text_path, "r", encoding="utf-8") as handle:
+                commands = self._parse_cad_text(handle.read())
+        except OSError as exc:
+            messagebox.showerror("Text to CAD", str(exc))
+            return False
+        if not commands:
+            self._set_status("No CAD commands found in text file")
+            return False
+        if dxf_path is None:
+            base = os.path.splitext(os.path.basename(text_path))[0] + ".dxf"
+            dxf_path = filedialog.asksaveasfilename(defaultextension=".dxf", filetypes=[("DXF CAD", "*.dxf")], initialfile=base)
+        wrote_dxf = False
+        if dxf_path:
+            wrote_dxf = self._write_cad_commands_dxf(commands, dxf_path)
+        if pdf_path is None and messagebox.askyesno("Text to CAD/PDF", "Also create a PDF preview from this text CAD script?"):
+            base = os.path.splitext(os.path.basename(text_path))[0] + ".pdf"
+            pdf_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile=base)
+        wrote_pdf = False
+        if pdf_path:
+            wrote_pdf = self._write_cad_commands_pdf(commands, pdf_path)
+        self._draw_cad_commands_on_canvas(commands)
+        self._set_status(f"Text CAD imported: {len(commands)} command(s), DXF={wrote_dxf}, PDF={wrote_pdf}")
+        return wrote_dxf or wrote_pdf
+
+    def _parse_cad_text(self, text):
+        commands = []
+        layer = self.current_layer or "0"
+        for raw_line in text.splitlines():
+            line = raw_line.split("#", 1)[0].split(";", 1)[0].strip()
+            if not line:
+                continue
+            try:
+                tokens = shlex.split(line)
+            except ValueError:
+                tokens = line.split()
+            if not tokens:
+                continue
+            op = tokens[0].lower()
+            if op in {"layer", "-layer"} and len(tokens) >= 2:
+                layer = self._cad_layer_name(" ".join(tokens[1:]))
+                continue
+            nums = []
+            for token in tokens[1:]:
+                try:
+                    nums.append(float(token))
+                except ValueError:
+                    pass
+            if op in {"line", "l"} and len(nums) >= 4:
+                commands.append({"type": "line", "points": [(nums[0], nums[1]), (nums[2], nums[3])], "layer": layer})
+            elif op in {"rect", "rectangle", "rec"} and len(nums) >= 4:
+                commands.append({"type": "rect", "points": [(nums[0], nums[1]), (nums[2], nums[3])], "layer": layer})
+            elif op in {"circle", "c"} and len(nums) >= 3:
+                commands.append({"type": "circle", "center": (nums[0], nums[1]), "radius": abs(nums[2]), "layer": layer})
+            elif op in {"polyline", "pline", "pl"} and len(nums) >= 4:
+                pts = [(nums[i], nums[i + 1]) for i in range(0, len(nums) - 1, 2)]
+                commands.append({"type": "polyline", "points": pts, "layer": layer})
+            elif op in {"polygon", "pg"} and len(nums) >= 6:
+                pts = [(nums[i], nums[i + 1]) for i in range(0, len(nums) - 1, 2)]
+                commands.append({"type": "polygon", "points": pts, "layer": layer})
+            elif op in {"text", "t"} and len(tokens) >= 4:
+                try:
+                    x, y = float(tokens[1]), float(tokens[2])
+                except ValueError:
+                    continue
+                commands.append({"type": "text", "point": (x, y), "text": " ".join(tokens[3:]), "height": 12, "layer": layer})
+        return commands
+
+    def _draw_cad_commands_on_canvas(self, commands):
+        created = []
+        for cmd in commands:
+            kind = cmd.get("type")
+            if kind == "line":
+                p0 = self._cad_to_canvas(*cmd["points"][0])
+                p1 = self._cad_to_canvas(*cmd["points"][1])
+                self.create_shape("line", p0[0], p0[1], p1[0], p1[1])
+                created.append(self._current_entries()[-1])
+            elif kind == "rect":
+                p0 = self._cad_to_canvas(*cmd["points"][0])
+                p1 = self._cad_to_canvas(*cmd["points"][1])
+                self.create_shape("rectangle", p0[0], p0[1], p1[0], p1[1])
+                created.append(self._current_entries()[-1])
+            elif kind == "circle":
+                cx, cy = self._cad_to_canvas(*cmd["center"])
+                radius = cmd["radius"] / (self._cad_scale() or 1.0)
+                self.create_shape("circle", cx - radius, cy - radius, cx + radius, cy + radius)
+                created.append(self._current_entries()[-1])
+            elif kind in {"polyline", "polygon"}:
+                coords = []
+                for point in cmd["points"]:
+                    coords.extend(self._cad_to_canvas(*point))
+                if kind == "polyline":
+                    self._create_polyline_from_coords(coords)
+                else:
+                    self._create_polygon_from_coords(coords)
+                created.append(self._current_entries()[-1])
+            elif kind == "text":
+                x, y = self._cad_to_canvas(*cmd["point"])
+                style = self._style()
+                item = self.canvas.create_text(x, y, text=cmd.get("text", ""), anchor="nw", fill=style["line_color"], font=(style["font_family"], style["font_size"]))
+                self._record_entry("Text", cmd.get("text", ""), [item])
+                created.append(self._current_entries()[-1])
+        if created:
+            self.clear_selection()
+            self.selected_entries = created
+            self.draw_selection()
+
+    def pdf_to_cad(self, pdf_path=None, dxf_path=None):
+        if pdf_path is None:
+            pdf_path = self.current_pdf if self.current_pdf and os.path.exists(self.current_pdf) else None
+        if pdf_path is None:
+            pdf_path = filedialog.askopenfilename(filetypes=[("PDF", "*.pdf"), ("All files", "*.*")])
+        if not pdf_path:
+            return False
+        if dxf_path is None:
+            base = os.path.splitext(os.path.basename(pdf_path))[0] + ".dxf"
+            dxf_path = filedialog.asksaveasfilename(defaultextension=".dxf", filetypes=[("DXF CAD", "*.dxf")], initialfile=base)
+        if not dxf_path:
+            return False
+        commands = self._extract_pdf_cad_commands(pdf_path)
+        if not commands:
+            self._set_status("No vector/text PDF content found for CAD export")
+            return False
+        if self._write_cad_commands_dxf(commands, dxf_path):
+            self._set_status(f"PDF to CAD exported {len(commands)} entities: {os.path.basename(dxf_path)}")
+            return True
+        return False
+
+    def _extract_pdf_cad_commands(self, pdf_path):
+        fitz = self._pdf_renderer()
+        if not fitz:
+            messagebox.showerror("PDF to CAD", "PDF to CAD needs PyMuPDF.")
+            return []
+        commands = []
+        try:
+            doc = fitz.open(pdf_path)
+        except Exception as exc:
+            messagebox.showerror("PDF to CAD", str(exc))
+            return []
+        y_offset = 0
+        for page_index, page in enumerate(doc):
+            height = float(page.rect.height)
+            layer = f"PDF_PAGE_{page_index + 1}"
+            try:
+                drawings = page.get_drawings()
+            except Exception:
+                drawings = []
+            for drawing in drawings:
+                for item in drawing.get("items", []):
+                    op = item[0]
+                    if op == "l":
+                        p1, p2 = item[1], item[2]
+                        commands.append({"type": "line", "points": [(p1.x, y_offset + height - p1.y), (p2.x, y_offset + height - p2.y)], "layer": layer})
+                    elif op == "re":
+                        rect = item[1]
+                        commands.append({"type": "rect", "points": [(rect.x0, y_offset + height - rect.y0), (rect.x1, y_offset + height - rect.y1)], "layer": layer})
+                    elif op == "c":
+                        pts = [(point.x, y_offset + height - point.y) for point in item[1:]]
+                        if len(pts) >= 2:
+                            commands.append({"type": "polyline", "points": pts, "layer": layer})
+            try:
+                text_dict = page.get_text("dict")
+            except Exception:
+                text_dict = {"blocks": []}
+            for block in text_dict.get("blocks", []):
+                for line in block.get("lines", []):
+                    for span in line.get("spans", []):
+                        value = span.get("text", "").strip()
+                        if not value:
+                            continue
+                        bbox = span.get("bbox", [0, 0, 0, 0])
+                        commands.append({"type": "text", "point": (bbox[0], y_offset + height - bbox[1]), "text": value, "height": max(4, span.get("size", 10)), "layer": layer})
+            y_offset += height + 80
+        doc.close()
+        return commands
 
     def print_document(self):
         paper = self.choose_paper_size("Print")
