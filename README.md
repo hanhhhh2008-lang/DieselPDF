@@ -10,7 +10,9 @@ Included workflow areas:
 - Home review tools: Hand, Select, Select Text, Snapshot, zoom, and whole-page rotation
 - Open existing PDF files with rendered pages behind the markup layer
 - Markup tools: line, circle, cloud, arrow, polyline, rectangle, polygon, pencil, eraser, text box, and callout
-- Measurement tools: calibration, distance, perimeter, area, scale, mm/cm/m units, endpoint snapping, and paper-size selection
+- Measurement tools: two-click calibration and distance, perimeter, area, numbered counts, mm/cm/m units, endpoint snapping, and paper-size selection
+- Page-specific calibration: click two known endpoints, enter the real distance in Properties, and apply the calculated scale to the current page
+- Editable markup information: subject, comment, and review status feed the Markups List and CSV export
 - Endpoint-priority object snap for lines, plus midpoint, intersection, extension, center, quadrant, nearest, and insertion modes
 - Polyline drawing starts at the first click and shows a live next-segment preview; double-click or right-click finishes it
 - Text boxes and callouts are typed directly on the page with `Ctrl+Enter` or click-away to finish
@@ -32,7 +34,10 @@ Included workflow areas:
 - Page organization: insert, delete, extract, duplicate, merge, split, replace, swap, overlay, crop, resize, rotate, and watermark
 - Conversion tools: image import/export, PDF recompression, Word-compatible RTF, Excel-compatible CSV, PowerPoint export, and CAD exchange
 - Project save/open using `.dieselpdf.json`
-- Startup opens in Hand review mode; `Esc` cancels the current operation and switches to Select on the Markup tab
+- Startup opens in Select mode; `Esc` cancels the current operation and returns to Hand review mode on the Home tab
+- User-created text can be reopened with Select Text or a double-click, then restyled and moved like other markups
+- Callouts are editable text boxes with an independently draggable arrow-tip handle for changing leader direction
+- Engineering Tool Chest sets include structural steel, concrete, mechanical pipe/valve/pump, electrical, survey, excavation, and safety symbols
 
 PDF page rendering is handled by the local PyMuPDF package in `vendor_pymupdf`. CAD exchange is handled by local `ezdxf` packages in `vendor_cad_py311`. PowerPoint export uses an installed Microsoft PowerPoint desktop application. True image OCR and live multi-user Studio sessions still require dedicated service integrations.
 
@@ -62,3 +67,11 @@ make a circle radius 12 at 80,50
 ```
 
 The text-to-CAD workflow follows the editable-script approach popularized by [CADAM](https://github.com/Adam-CAD/CADAM), while DieselPDF keeps its 2D PDF markup geometry native and exports it through the bundled [ezdxf](https://github.com/mozman/ezdxf) engine. CADAM's GPL web/3D stack is not copied into the desktop application.
+
+## Design references
+
+DieselPDF follows familiar review workflows described in Bluebeam's official documentation, including page calibration before takeoff, reusable Tool Chest items, and a Markups List with subject, comments, and status. DieselPDF is an independent project and does not include or redistribute Bluebeam software or manuals.
+
+- Page scale and calibration: https://support.bluebeam.com/user-manual/menus/tools/set-page-scale.html
+- Tool Chest guide: https://support.bluebeam.com/revu/features/tool-chest-guide.html
+- Revu Starter Kit: https://support.bluebeam.com/revu/resources/revu-21-starter-kit.html

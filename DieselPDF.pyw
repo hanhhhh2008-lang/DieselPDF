@@ -85,6 +85,7 @@ ICON = {
     "Distance": "\u2194",
     "Perimeter": "\u25a1",
     "Area": "\u25a3",
+    "Count": "\u25cf",
     "Set Scale": "\u2696",
     "Text Box": "\u25a4",
     "Callout": "\u21f1",
@@ -139,6 +140,16 @@ DEFAULT_TOOL_SETS = [
     ("Takeoff", "Scale Bar", "scale_bar"),
     ("Construction", "North Arrow", "north_arrow"),
     ("Construction", "Door Opening", "door_opening"),
+    ("Structural", "Steel Column", "steel_column"),
+    ("Structural", "Steel Beam", "steel_beam"),
+    ("Structural", "Concrete Area", "concrete_area"),
+    ("Mechanical", "Pipe Run", "pipe_run"),
+    ("Mechanical", "Gate Valve", "gate_valve"),
+    ("Mechanical", "Pump", "pump"),
+    ("Electrical", "Power Outlet", "power_outlet"),
+    ("Electrical", "Light Point", "light_point"),
+    ("Site", "Survey Point", "survey_point"),
+    ("Site", "Excavation", "excavation"),
     ("Safety", "Warning", "warning"),
     ("Safety", "Fire Point", "fire_point"),
 ]
@@ -148,6 +159,16 @@ def paper_pixels(name):
     width_mm, height_mm = PAPER_MM.get(name, PAPER_MM["A4"])
     factor = 3.0
     return int(width_mm * factor), int(height_mm * factor)
+
+
+def blank_page(name="A4"):
+    return {
+        "paper": name,
+        "entries": [],
+        "scale_units_per_px": DEFAULT_MM_PER_BASE_PX,
+        "scale_unit": "mm",
+        "scale_label": "1 px = 0.3333 mm",
+    }
 
 
 def clamp_box(x0, y0, x1, y1):
@@ -190,7 +211,7 @@ class DieselPDF(tk.Tk):
         self._apply_style()
         self._set_app_icon()
 
-        self.current_tool = "hand"
+        self.current_tool = "select"
         self.current_file = None
         self.current_pdf = None
         self.pdf_render_scale = 1.35
@@ -203,7 +224,7 @@ class DieselPDF(tk.Tk):
         os.makedirs(self.pdf_render_dir, exist_ok=True)
         self.project_file = None
         self.current_page = 0
-        self.pages = [{"paper": "A4", "entries": []}]
+        self.pages = [blank_page()]
         self.page_w, self.page_h = paper_pixels("A4")
         self.next_entry_id = 1
         self.next_group_id = 1
@@ -215,6 +236,8 @@ class DieselPDF(tk.Tk):
         self.drag = None
         self.pending_points = []
         self.pending_preview = None
+        self.measurement_start = None
+        self.measurement_preview = None
         self.inline_editor = None
         self.inline_window_item = None
         self.inline_edit_data = None
@@ -243,10 +266,16 @@ class DieselPDF(tk.Tk):
         self.start_arrow_var = tk.StringVar(value="None")
         self.end_arrow_var = tk.StringVar(value="Closed Arrow")
         self.precision_var = tk.StringVar(value="0.01")
+        self.known_distance_var = tk.StringVar(value="100")
         self.paper_var = tk.StringVar(value="A4")
         self.scale_label_var = tk.StringVar(value="1 px = 0.3333 mm")
         self.unit_var = tk.StringVar(value="mm")
         self.layer_var = tk.StringVar(value="0")
+        self.keep_tool_active_var = tk.BooleanVar(value=True)
+        self.select_new_markup_var = tk.BooleanVar(value=True)
+        self.subject_var = tk.StringVar(value="Auto")
+        self.comment_var = tk.StringVar(value="")
+        self.markup_status_var = tk.StringVar(value="None")
         self.command_var = tk.StringVar()
         self.page_jump_var = tk.StringVar(value="1")
         self.snap_indicator_var = tk.StringVar(value="OSNAP")
@@ -282,7 +311,7 @@ class DieselPDF(tk.Tk):
 
         self._build_ui()
         self._bind_shortcuts()
-        self._set_tool("hand")
+        self._set_tool("select")
         self._set_status("Ready")
 
     def _apply_style(self):
@@ -521,8 +550,8 @@ class DieselPDF(tk.Tk):
         self._clear_pending()
         self.drag = None
         self.hide_crosshair()
-        self._select_tab("Markup")
-        self._set_tool("select")
+        self._select_tab("Home")
+        self._set_tool("hand")
 
     def _build_ribbon(self):
         self.ribbon = tk.Frame(self, bg=self.colors["ribbon"], height=142, bd=0, highlightthickness=1, highlightbackground=self.colors["border"])
@@ -559,11 +588,11 @@ class DieselPDF(tk.Tk):
             self._tool_button(text, "Text Box", "text_box")
             self._tool_button(text, "Callout", "callout")
             edit = self._group("Edit")
-            for label, command in [("Group", self.group_selected), ("Ungroup", self.ungroup_selected), ("Flatten", self.flatten_selected), ("Library", self.save_group_library), ("Delete", self.delete_selected)]:
+            for label, command in [("Group", self.group_selected), ("Ungroup", self.ungroup_selected), ("Flatten", self.flatten_selected), ("Delete", self.delete_selected)]:
                 self._cmd_button(edit, label, command)
         elif tab == "Measure":
             measure = self._group("Takeoff")
-            for label, tool in [("Calibrate", "calibrate"), ("Distance", "distance"), ("Perimeter", "perimeter"), ("Area", "area")]:
+            for label, tool in [("Calibrate", "calibrate"), ("Distance", "distance"), ("Perimeter", "perimeter"), ("Area", "area"), ("Count", "count")]:
                 self._tool_button(measure, label, tool)
             self._cmd_button(measure, "Set Scale", self.manual_scale)
         elif tab == "Properties":
@@ -589,7 +618,7 @@ class DieselPDF(tk.Tk):
                 self._cmd_button(office, label, command)
         elif tab == "Studio":
             studio = self._group("Collaboration")
-            self._cmd_button(studio, "Library", self.save_group_library)
+            self._cmd_button(studio, "Save Tool", self.save_group_library)
             self._cmd_button(studio, "Save", self.save_project)
         elif tab == "OCR":
             ocr = self._group("Text Recognition")
@@ -767,7 +796,7 @@ class DieselPDF(tk.Tk):
             "project_file": None,
             "current_file": None,
             "current_pdf": None,
-            "pages": [{"paper": "A4", "entries": []}],
+            "pages": [blank_page()],
             "current_page": 0,
             "scale_units_per_px": DEFAULT_MM_PER_BASE_PX,
             "scale_unit": "mm",
@@ -811,7 +840,7 @@ class DieselPDF(tk.Tk):
         self.project_file = doc.get("project_file")
         self.current_file = doc.get("current_file")
         self.current_pdf = doc.get("current_pdf") or (self.current_file if self._is_pdf_path(self.current_file) else None)
-        self.pages = doc.get("pages", [{"paper": "A4", "entries": []}])
+        self.pages = doc.get("pages", [blank_page()])
         self.current_page = min(doc.get("current_page", 0), max(0, len(self.pages) - 1))
         self.scale_units_per_px = doc.get("scale_units_per_px") or DEFAULT_MM_PER_BASE_PX
         self.scale_unit = doc.get("scale_unit", "mm")
@@ -957,7 +986,7 @@ class DieselPDF(tk.Tk):
         self.canvas.bind("<ButtonPress-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        self.canvas.bind("<Double-Button-1>", self.finish_pending_shape)
+        self.canvas.bind("<Double-Button-1>", self.on_double_click)
         self.canvas.bind("<Button-3>", self.on_right_click)
         self.canvas.bind("<Motion>", self.on_motion)
         self.canvas.bind("<Control-MouseWheel>", self.on_ctrl_mousewheel)
@@ -987,8 +1016,8 @@ class DieselPDF(tk.Tk):
         self.properties.bind("<Configure>", lambda _event: self.property_canvas.configure(scrollregion=self.property_canvas.bbox("all")))
         self.property_canvas.bind("<Configure>", lambda event: self.property_canvas.itemconfigure(self.property_window, width=event.width))
 
-        self._section("General", [("Keep Selected", "True"), ("Exclusive Mode", "False")])
-        self._section("Subject", [("Subject Kind", "Default"), ("Subject", "Dimension Line")])
+        self._placement_section()
+        self._metadata_section()
         self._style_section()
         self._measure_section()
         self._section("Line Endings", [("Start", self.start_arrow_var), ("End", self.end_arrow_var), ("Start Scale", "Auto"), ("End Scale", "Auto")])
@@ -1015,6 +1044,51 @@ class DieselPDF(tk.Tk):
         for label, value in rows:
             self._property_row(label, value)
 
+    def _placement_section(self):
+        tk.Label(self.properties, text="Placement", bg="#e9edf2", fg=self.colors["text"], anchor="w", padx=7, pady=4, font=self.font_heading).pack(fill="x", pady=(0, 1))
+        self._check_row("Keep Tool Active", self.keep_tool_active_var, "continue drawing after placement")
+        self._check_row("Select New Markup", self.select_new_markup_var, "show resize handles after placement")
+
+    def _metadata_section(self):
+        tk.Label(self.properties, text="Markup Info", bg="#e9edf2", fg=self.colors["text"], anchor="w", padx=7, pady=4, font=self.font_heading).pack(fill="x", pady=(0, 1))
+        self._metadata_entry_row("Subject", self.subject_var)
+        self._metadata_entry_row("Comment", self.comment_var)
+        self._metadata_option_row("Status", self.markup_status_var, ["None", "Review", "Approved", "Rejected", "Complete"])
+
+    def _check_row(self, label, variable, help_text):
+        row = tk.Frame(self.properties, bg=self.colors["card"])
+        row.pack(fill="x", padx=6, pady=1)
+        control = tk.Checkbutton(
+            row,
+            text=label,
+            variable=variable,
+            bg=self.colors["card"],
+            fg=self.colors["text"],
+            activebackground=self.colors["card"],
+            anchor="w",
+            bd=0,
+            font=self.font_body,
+        )
+        control.pack(fill="x")
+        tk.Label(row, text=help_text, bg=self.colors["card"], fg=self.colors["muted"], anchor="w", font=self.font_small).pack(fill="x", padx=(22, 0))
+
+    def _metadata_entry_row(self, label, variable):
+        row = tk.Frame(self.properties, bg=self.colors["card"], height=27)
+        row.pack(fill="x")
+        tk.Label(row, text=label, bg=self.colors["card"], fg=self.colors["muted"], width=12, anchor="e", font=self.font_body).pack(side="left", padx=(2, 6))
+        entry = tk.Entry(row, textvariable=variable, bd=0, highlightthickness=1, highlightbackground=self.colors["border"], font=self.font_body)
+        entry.pack(side="left", fill="x", expand=True, padx=(0, 5), pady=2)
+        entry.bind("<KeyRelease>", lambda _event: self._schedule_metadata_apply())
+        entry.bind("<FocusOut>", lambda _event: self.apply_metadata_to_selected())
+
+    def _metadata_option_row(self, label, variable, values):
+        row = tk.Frame(self.properties, bg=self.colors["card"], height=27)
+        row.pack(fill="x")
+        tk.Label(row, text=label, bg=self.colors["card"], fg=self.colors["muted"], width=12, anchor="e", font=self.font_body).pack(side="left", padx=(2, 6))
+        menu = ttk.Combobox(row, textvariable=variable, values=values, state="readonly", width=15)
+        menu.pack(side="left", fill="x", expand=True, padx=(0, 5), pady=2)
+        menu.bind("<<ComboboxSelected>>", lambda _event: self.apply_metadata_to_selected())
+
     def _style_section(self):
         tk.Label(self.properties, text="Style", bg="#e9edf2", fg=self.colors["text"], anchor="w", padx=7, pady=4, font=self.font_heading).pack(fill="x", pady=(0, 1))
         self._color_row("Fill Color", self.fill_color_var, self.choose_fill_color)
@@ -1031,12 +1105,22 @@ class DieselPDF(tk.Tk):
 
     def _measure_section(self):
         tk.Label(self.properties, text="Measure", bg="#e9edf2", fg=self.colors["text"], anchor="w", padx=7, pady=4, font=self.font_heading).pack(fill="x", pady=(0, 1))
-        self._property_row("Label", "<Not Set>")
-        self._property_row("Scale", self.scale_label_var)
+        self._calibration_entry_row("Known Distance", self.known_distance_var)
         self._option_row("Unit", self.unit_var, MEASURE_UNITS)
+        self._property_row("Page Scale", self.scale_label_var)
         self._option_row("Paper Size", self.paper_var, PAPER_NAMES)
         self._entry_row("Precision", self.precision_var)
-        tk.Button(self.properties, text="Manual Scale", command=self.manual_scale, **self._flat_button()).pack(fill="x", padx=8, pady=5)
+        tk.Button(self.properties, text="Apply Scale to This Page", command=self.apply_known_distance_to_page, **self._flat_button()).pack(fill="x", padx=8, pady=(5, 2))
+        tk.Button(self.properties, text="Enter Scale Manually", command=self.manual_scale, **self._flat_button()).pack(fill="x", padx=8, pady=(2, 5))
+
+    def _calibration_entry_row(self, label, variable):
+        row = tk.Frame(self.properties, bg=self.colors["card"], height=27)
+        row.pack(fill="x")
+        tk.Label(row, text=label, bg=self.colors["card"], fg=self.colors["muted"], width=15, anchor="e", font=self.font_body).pack(side="left", padx=(2, 6))
+        entry = tk.Entry(row, textvariable=variable, bd=0, highlightthickness=1, highlightbackground=self.colors["border"], font=self.font_body)
+        entry.pack(side="left", fill="x", expand=True, padx=(0, 5), pady=2)
+        entry.bind("<Return>", lambda _event: self.apply_known_distance_to_page())
+        entry.bind("<FocusOut>", lambda _event: self.apply_known_distance_to_page(silent=True))
 
     def _flat_button(self):
         return {
@@ -1377,7 +1461,7 @@ class DieselPDF(tk.Tk):
     def _set_tool(self, tool):
         self.current_tool = tool
         self._clear_pending()
-        if tool in {"calibrate", "distance", "perimeter", "area"}:
+        if tool in {"calibrate", "distance", "perimeter", "area", "count"}:
             self._ensure_measure_snaps()
         elif tool in {"line", "arrow", "polyline", "polygon"}:
             self.snap_vars["Endpoint"].set(True)
@@ -1405,6 +1489,7 @@ class DieselPDF(tk.Tk):
             "distance": "Distance",
             "perimeter": "Perimeter",
             "area": "Area",
+            "count": "Count",
             "text_box": "Text Box",
             "callout": "Callout",
         }
@@ -1757,13 +1842,15 @@ class DieselPDF(tk.Tk):
         return x0 <= x <= x1 and y0 <= y <= y1
 
     def on_motion(self, event):
-        if self.current_tool in {"line", "circle", "cloud", "arrow", "polyline", "rectangle", "polygon", "pencil", "eraser", "snapshot", "calibrate", "distance", "perimeter", "area"}:
+        if self.current_tool in {"line", "circle", "cloud", "arrow", "polyline", "rectangle", "polygon", "pencil", "eraser", "snapshot", "calibrate", "distance", "perimeter", "area", "count"}:
             self.canvas.configure(cursor="crosshair")
             x, y = self._canvas_xy(event)
             sx, sy, label = self.snap_point(x, y)
             self.show_crosshair(sx, sy, label)
             if self.current_tool in {"polyline", "polygon"} and self.pending_points:
                 self.update_pending_preview(sx, sy)
+            elif self.current_tool in {"distance", "calibrate"} and self.measurement_start:
+                self.update_measurement_preview(sx, sy)
         else:
             self.hide_crosshair()
 
@@ -1782,7 +1869,16 @@ class DieselPDF(tk.Tk):
                 return
             if not self._inside_page(x, y):
                 return
-            self.select_at(x, y, event)
+            entry = self.select_at(x, y, event)
+            if entry and entry in self.selected_entries:
+                before = {
+                    item: self.canvas.coords(item)[:]
+                    for selected in self.selected_entries
+                    if not selected.get("flattened")
+                    for item in selected.get("items", [])
+                }
+                if before:
+                    self.drag = {"move_selection": True, "last_x": x, "last_y": y, "before": before}
             return
         if not self._inside_page(x, y):
             return
@@ -1792,6 +1888,12 @@ class DieselPDF(tk.Tk):
         x, y, _label = self.snap_point(x, y)
         if self.current_tool == "eraser":
             self.erase_at(x, y)
+            return
+        if self.current_tool == "count":
+            self.create_count(x, y)
+            return
+        if self.current_tool in {"distance", "calibrate"}:
+            self.add_measurement_click(self.current_tool, x, y, bool(event.state & 0x0004))
             return
         if self.current_tool in {"polyline", "polygon"}:
             self.add_pending_point(x, y)
@@ -1813,6 +1915,22 @@ class DieselPDF(tk.Tk):
         if self.drag.get("pan"):
             self.canvas.scan_dragto(event.x, event.y, gain=1)
             return
+        if self.drag.get("callout_tip"):
+            x, y = self._canvas_xy(event)
+            coords = self.canvas.coords(self.drag["arrow"])
+            if len(coords) >= 4:
+                coords[-2:] = [x, y]
+                self.canvas.coords(self.drag["arrow"], *coords)
+                self.draw_selection()
+            return
+        if self.drag.get("move_selection"):
+            x, y = self._canvas_xy(event)
+            dx, dy = x - self.drag["last_x"], y - self.drag["last_y"]
+            for item in self.drag["before"]:
+                self.canvas.move(item, dx, dy)
+            self.drag["last_x"], self.drag["last_y"] = x, y
+            self.draw_selection()
+            return
         if self.drag.get("resize"):
             x, y = self._canvas_xy(event)
             self._resize_selected_to(x, y)
@@ -1833,6 +1951,23 @@ class DieselPDF(tk.Tk):
             return
         if self.drag.get("pan"):
             self.drag = None
+            return
+        if self.drag.get("callout_tip"):
+            before = self.drag["before"]
+            after = {item: self.canvas.coords(item)[:] for item in before}
+            self.drag = None
+            self._push_undo({"type": "coords", "before": before, "after": after})
+            self.draw_selection()
+            self._set_status("Callout arrow direction updated")
+            return
+        if self.drag.get("move_selection"):
+            before = self.drag["before"]
+            after = {item: self.canvas.coords(item)[:] for item in before}
+            self.drag = None
+            if any(before[item] != after[item] for item in before):
+                self._push_undo({"type": "coords", "before": before, "after": after})
+                self._set_status("Selection moved")
+            self.draw_selection()
             return
         if self.drag.get("resize"):
             before = self.drag["before"]
@@ -1892,6 +2027,10 @@ class DieselPDF(tk.Tk):
         self.create_shape(tool, x0, y0, x1, y1)
 
     def on_right_click(self, event):
+        if self.measurement_start:
+            self._clear_pending()
+            self._set_status("Measurement cancelled")
+            return
         if self.current_tool in {"polyline", "polygon"} and self.pending_points:
             self.finish_pending_shape(event)
             return
@@ -1914,6 +2053,16 @@ class DieselPDF(tk.Tk):
         menu.add_command(label="Flatten Page Markups", command=self.flatten_layer)
         menu.add_command(label="Delete", command=self.delete_selected, state="normal" if self.selected_entries else "disabled")
         menu.tk_popup(event.x_root, event.y_root)
+
+    def on_double_click(self, event):
+        if self.current_tool in {"select", "select_text"}:
+            x, y = self._canvas_xy(event)
+            entry = self._entry_at(x, y)
+            if entry and any(self.canvas.type(item) == "text" for item in entry.get("items", [])):
+                self.drag = None
+                self.edit_markup_text(entry)
+                return "break"
+        self.finish_pending_shape(event)
 
     def _draw_preview(self, x0, y0, x1, y1):
         if self.drag.get("preview"):
@@ -1983,6 +2132,29 @@ class DieselPDF(tk.Tk):
         elif tool == "calibrate":
             self.finish_calibration(x0, y0, x1, y1)
 
+    def create_count(self, x, y):
+        number = 1 + sum(entry.get("kind") == "Count" for entry in self._current_entries())
+        style = self._style()
+        radius = max(9, style["font_size"] * 0.8)
+        marker = self.canvas.create_oval(
+            x - radius,
+            y - radius,
+            x + radius,
+            y + radius,
+            outline=style["line_color"],
+            fill=style["fill_color"] or "#ffffff",
+            width=style["width"],
+        )
+        label = self.canvas.create_text(
+            x,
+            y,
+            text=str(number),
+            fill=style["line_color"],
+            font=(style["font_family"], style["font_size"], "bold"),
+        )
+        self._record_entry("Count", f"Count {number}", [marker, label])
+        self._set_status(f"Count {number} placed")
+
     def _cloud_points(self, x0, y0, x1, y1):
         x0, y0, x1, y1 = clamp_box(x0, y0, x1, y1)
         step = max(12, min(abs(x1 - x0), abs(y1 - y0)) / 6)
@@ -2027,6 +2199,43 @@ class DieselPDF(tk.Tk):
             points.extend(self.pending_points[:2])
         self.pending_preview = self.canvas.create_line(points, fill=style["line_color"], width=style["width"], dash=self._dash())
 
+    def add_measurement_click(self, tool, x, y, temporary_ortho=False):
+        if not self.measurement_start or self.measurement_start.get("tool") != tool:
+            self.measurement_start = {"tool": tool, "x": x, "y": y}
+            action = "known calibration length" if tool == "calibrate" else "distance"
+            self._set_status(f"Start point set; click the second endpoint to finish the {action}")
+            self.update_measurement_preview(x, y)
+            return
+        start = self.measurement_start
+        x0, y0 = start["x"], start["y"]
+        if self.ortho_var.get() or temporary_ortho:
+            if abs(x - x0) >= abs(y - y0):
+                y = y0
+            else:
+                x = x0
+        self.measurement_start = None
+        if self.measurement_preview:
+            self.canvas.delete(self.measurement_preview)
+            self.measurement_preview = None
+        if math.hypot(x - x0, y - y0) < 4:
+            self._set_status("Measurement needs two different endpoints")
+            return
+        self.create_shape(tool, x0, y0, x, y)
+
+    def update_measurement_preview(self, x, y):
+        if not self.measurement_start:
+            return
+        if self.measurement_preview:
+            self.canvas.delete(self.measurement_preview)
+        x0, y0 = self.measurement_start["x"], self.measurement_start["y"]
+        if self.ortho_var.get():
+            if abs(x - x0) >= abs(y - y0):
+                y = y0
+            else:
+                x = x0
+        style = self._style()
+        self.measurement_preview = self.canvas.create_line(x0, y0, x, y, fill=style["line_color"], width=style["width"], dash=(5, 3))
+
     def finish_pending_shape(self, event=None):
         minimum = 6 if self.current_tool == "polygon" else 4
         if self.current_tool not in {"polyline", "polygon"} or len(self.pending_points) < minimum:
@@ -2049,8 +2258,12 @@ class DieselPDF(tk.Tk):
             self.canvas.delete(self.pending_preview)
             self.pending_preview = None
         self.pending_points = []
+        if self.measurement_preview:
+            self.canvas.delete(self.measurement_preview)
+            self.measurement_preview = None
+        self.measurement_start = None
 
-    def start_inline_text(self, kind, box, tip=None):
+    def start_inline_text(self, kind, box, tip=None, entry=None):
         self.cancel_inline_text()
         page_x0, page_y0, page_x1, page_y1 = self._page_bbox()
         x0, y0, x1, y1 = box
@@ -2060,11 +2273,19 @@ class DieselPDF(tk.Tk):
         y0 = max(page_y0 + 5, min(y0, page_y1 - height - 5))
         x1, y1 = x0 + width, y0 + height
         editor = tk.Text(self.canvas, wrap="word", bd=1, relief="solid", highlightthickness=2, highlightbackground=self.colors["blue"], font=(self.font_family_var.get(), int(self._safe_float(self.font_size_var.get(), 12))))
-        editor.insert("1.0", "")
+        initial_text = entry.get("detail", "") if entry else ""
+        if entry:
+            text_items = [item for item in entry.get("items", []) if self.canvas.type(item) == "text"]
+            if text_items:
+                initial_text = self._item_option(text_items[0], "text")
+        editor.insert("1.0", initial_text)
         window_item = self.canvas.create_window(x0 + 4, y0 + 4, anchor="nw", width=width - 8, height=height - 8, window=editor)
         self.inline_editor = editor
         self.inline_window_item = window_item
-        self.inline_edit_data = {"kind": kind, "box": (x0, y0, x1, y1), "tip": tip, "style": self._style()}
+        self.inline_edit_data = {"kind": kind, "box": (x0, y0, x1, y1), "tip": tip, "style": self._style(), "entry": entry}
+        if entry:
+            for item in entry.get("items", []):
+                self.canvas.itemconfigure(item, state="hidden")
         editor.bind("<Control-Return>", self._commit_inline_event)
         editor.bind("<Escape>", self._cancel_inline_event)
         editor.bind("<FocusOut>", lambda _event: self.after(60, self._commit_inline_after_focus))
@@ -2095,6 +2316,25 @@ class DieselPDF(tk.Tk):
             return
         style = data["style"]
         x0, y0, x1, y1 = data["box"]
+        entry = data.get("entry")
+        if entry:
+            text_items = [item for item in entry.get("items", []) if self.canvas.type(item) == "text"]
+            if text_items:
+                self.canvas.itemconfigure(
+                    text_items[0],
+                    text=text,
+                    fill=style["line_color"],
+                    font=(style["font_family"], style["font_size"]),
+                    width=max(20, x1 - x0 - 20),
+                )
+            entry["detail"] = text
+            entry["stroke_color"] = style["base_line_color"]
+            entry["font_family"] = style["font_family"]
+            entry["font_size"] = style["font_size"]
+            self._add_markup_row(entry)
+            self.draw_selection()
+            self._set_status(f"Updated {data['kind']} text")
+            return
         rect = self.canvas.create_rectangle(x0, y0, x1, y1, outline=style["line_color"], fill=style["fill_color"] or "white", width=style["width"], dash=self._dash())
         label = self.canvas.create_text(x0 + 10, y0 + 10, text=text, anchor="nw", width=max(20, x1 - x0 - 20), fill=style["line_color"], font=(style["font_family"], style["font_size"]))
         items = [rect, label]
@@ -2107,6 +2347,7 @@ class DieselPDF(tk.Tk):
     def _remove_inline_editor(self):
         editor = self.inline_editor
         window_item = self.inline_window_item
+        data = self.inline_edit_data
         self.inline_editor = None
         self.inline_window_item = None
         self.inline_edit_data = None
@@ -2117,6 +2358,11 @@ class DieselPDF(tk.Tk):
                 editor.destroy()
             except tk.TclError:
                 pass
+        if data:
+            entry = data.get("entry")
+            if entry:
+                for item in entry.get("items", []):
+                    self.canvas.itemconfigure(item, state="normal")
 
     def cancel_inline_text(self):
         if self.inline_editor is None:
@@ -2124,20 +2370,33 @@ class DieselPDF(tk.Tk):
         self._remove_inline_editor()
         self._set_status("Text entry cancelled")
 
+    def edit_markup_text(self, entry):
+        text_items = [item for item in entry.get("items", []) if self.canvas.type(item) == "text"]
+        if not text_items:
+            self._set_status("Selected markup has no editable text")
+            return
+        box_item = next((item for item in entry.get("items", []) if self.canvas.type(item) in {"rectangle", "polygon"}), None)
+        box = self.canvas.bbox(box_item) if box_item else self.canvas.bbox(text_items[0])
+        if not box:
+            return
+        arrow = next((item for item in entry.get("items", []) if self.canvas.type(item) == "line" and self._item_option(item, "arrow")), None)
+        tip = None
+        if arrow:
+            coords = self.canvas.coords(arrow)
+            if len(coords) >= 4:
+                tip = (coords[-2], coords[-1])
+        self.clear_selection()
+        self.selected_entries = [entry]
+        self._load_properties_from_selection()
+        self.start_inline_text(entry.get("kind", "Text Box"), box, tip=tip, entry=entry)
+
     def select_text_at(self, x, y):
         self.canvas.delete("pdf_text_selection")
         entry = self._entry_at(x, y)
         if entry:
             text_items = [item for item in entry.get("items", []) if self.canvas.type(item) == "text"]
             if text_items:
-                self.clear_selection()
-                self.selected_entries = self._entries_in_group(entry)
-                self.draw_selection()
-                value = " ".join(self._item_option(item, "text") for item in text_items).strip()
-                if value:
-                    self.clipboard_clear()
-                    self.clipboard_append(value)
-                self._set_status(f"Selected markup text: {value[:70]}")
+                self.edit_markup_text(entry)
                 return
         page = self.pages[self.current_page]
         if not self._is_pdf_page(page):
@@ -2216,26 +2475,84 @@ class DieselPDF(tk.Tk):
         pixels = math.hypot(x1 - x0, y1 - y0)
         if pixels <= 0:
             return
-        real = simpledialog.askfloat("Calibrate", "Known real distance:", minvalue=0.0001)
-        if not real:
+        real = self._safe_float(self.known_distance_var.get(), 0)
+        if real <= 0:
+            self._set_status("Enter a known distance greater than zero in Properties, then calibrate again")
             return
         unit = self.unit_var.get() or self.scale_unit
-        self.scale_units_per_px = real * self.zoom_level / pixels
-        self.scale_unit = unit
-        self.scale_label_var.set(f"1 px = {self.scale_units_per_px:.4f} {unit}")
+        base_pixels = pixels / self.zoom_level
+        self._apply_scale_to_current_page(real / base_pixels, unit)
         style = self._style()
         line = self.canvas.create_line(x0, y0, x1, y1, fill=self.colors["blue"], width=max(2, style["width"]), arrow=tk.BOTH)
-        label = self.canvas.create_text((x0 + x1) / 2, (y0 + y1) / 2 - 14, text=f"Scale: {real:g} {unit}", fill=self.colors["blue"], font=(style["font_family"], style["font_size"], "bold"))
-        self._record_entry("Calibration", f"{real:g} {unit}", [line, label])
+        label = self.canvas.create_text((x0 + x1) / 2, (y0 + y1) / 2 - 14, text=f"Known: {real:g} {unit}", fill=self.colors["blue"], font=(style["font_family"], style["font_size"], "bold"))
+        entry = self._record_entry("Calibration", f"{real:g} {unit}", [line, label])
+        entry["calibration_base_pixels"] = base_pixels
+        entry["known_distance"] = real
+        self._add_markup_row(entry)
+        self._set_status(f"Page {self.current_page + 1} calibrated from {real:g} {unit}")
+
+    def apply_known_distance_to_page(self, silent=False):
+        calibration = next((entry for entry in reversed(self.selected_entries) if entry.get("calibration_base_pixels")), None)
+        if calibration is None:
+            calibration = next((entry for entry in reversed(self._current_entries()) if entry.get("calibration_base_pixels")), None)
+        if calibration is None:
+            if not silent:
+                self._set_status("Use Calibrate and click two endpoints before applying a known distance")
+            return
+        real = self._safe_float(self.known_distance_var.get(), 0)
+        if real <= 0:
+            if not silent:
+                self._set_status("Known Distance must be greater than zero")
+            return
+        base_pixels = self._safe_float(calibration.get("calibration_base_pixels"), 0)
+        if base_pixels <= 0:
+            return
+        unit = self.unit_var.get() or self.scale_unit
+        self._apply_scale_to_current_page(real / base_pixels, unit)
+        calibration["known_distance"] = real
+        calibration["detail"] = f"{real:g} {unit}"
+        for item in calibration.get("items", []):
+            if self.canvas.type(item) == "text":
+                self.canvas.itemconfigure(item, text=f"Known: {real:g} {unit}")
+        self._add_markup_row(calibration)
+        if not silent:
+            self._set_status(f"Applied {real:g} {unit} calibration to page {self.current_page + 1}")
+
+    def _apply_scale_to_current_page(self, units_per_base_pixel, unit, label=None):
+        self.scale_units_per_px = max(0.000000001, float(units_per_base_pixel))
+        self.scale_unit = unit if unit in UNIT_TO_MM else "mm"
+        self.scale_label_var.set(label or f"1 px = {self.scale_units_per_px:.4f} {self.scale_unit}")
+        page = self.pages[self.current_page]
+        page["scale_units_per_px"] = self.scale_units_per_px
+        page["scale_unit"] = self.scale_unit
+        page["scale_label"] = self.scale_label_var.get()
+        self._updating_unit = True
+        try:
+            self.unit_var.set(self.scale_unit)
+        finally:
+            self._updating_unit = False
+        self._refresh_page_measurements()
+
+    def _load_current_page_scale(self):
+        page = self.pages[self.current_page]
+        self.scale_units_per_px = page.get("scale_units_per_px") or self.scale_units_per_px or DEFAULT_MM_PER_BASE_PX
+        self.scale_unit = page.get("scale_unit") or self.scale_unit or "mm"
+        self.scale_label_var.set(page.get("scale_label") or f"1 px = {self.scale_units_per_px:.4f} {self.scale_unit}")
+        page["scale_units_per_px"] = self.scale_units_per_px
+        page["scale_unit"] = self.scale_unit
+        page["scale_label"] = self.scale_label_var.get()
+        self._updating_unit = True
+        try:
+            self.unit_var.set(self.scale_unit)
+        finally:
+            self._updating_unit = False
 
     def manual_scale(self):
         value = simpledialog.askfloat("Manual Scale", "Real units per 100 pixels:", minvalue=0.0001)
         if not value:
             return
         unit = self.unit_var.get() or self.scale_unit
-        self.scale_units_per_px = value / 100
-        self.scale_unit = unit
-        self.scale_label_var.set(f"100 px = {value:g} {unit}")
+        self._apply_scale_to_current_page(value / 100, unit, f"100 px = {value:g} {unit}")
         self._set_status(f"Manual scale set: 100 px = {value:g} {unit}")
 
     def _unit_changed(self, *_args):
@@ -2257,6 +2574,11 @@ class DieselPDF(tk.Tk):
             self.unit_var.set(unit)
         finally:
             self._updating_unit = False
+        page = self.pages[self.current_page]
+        page["scale_units_per_px"] = self.scale_units_per_px
+        page["scale_unit"] = self.scale_unit
+        page["scale_label"] = self.scale_label_var.get()
+        self._refresh_page_measurements()
         self._set_status(f"Measure unit set to {unit}")
 
     def _precision(self):
@@ -2284,8 +2606,29 @@ class DieselPDF(tk.Tk):
             return f"A = {value:g} {self.scale_unit}^2"
         return f"A = {area_px:.0f} px^2"
 
+    def _refresh_page_measurements(self):
+        for entry in self._current_entries():
+            kind = entry.get("kind")
+            items = entry.get("items", [])
+            if kind not in {"Distance", "Perimeter", "Area"} or len(items) < 2:
+                continue
+            coords = self.canvas.coords(items[0])
+            if len(coords) < 4:
+                continue
+            x0, y0, x1, y1 = coords[:4]
+            if kind == "Distance":
+                detail = self._measure_label(math.hypot(x1 - x0, y1 - y0))
+            elif kind == "Perimeter":
+                detail = self._perimeter_label(abs(x1 - x0), abs(y1 - y0))
+            else:
+                detail = self._area_label(abs(x1 - x0), abs(y1 - y0))
+            entry["detail"] = detail
+            self.canvas.itemconfigure(items[1], text=detail)
+            self._add_markup_row(entry)
+
     def _record_entry(self, kind, detail, items):
         style = self._style()
+        subject = self.subject_var.get().strip()
         entry = {
             "id": self.next_entry_id,
             "kind": kind,
@@ -2303,6 +2646,9 @@ class DieselPDF(tk.Tk):
             "font_size": style["font_size"],
             "scale_percent": 100.0,
             "rotation_deg": 0.0,
+            "subject": kind if not subject or subject.lower() == "auto" else subject,
+            "comment": self.comment_var.get().strip(),
+            "status": self.markup_status_var.get(),
         }
         self.next_entry_id += 1
         tag = f"entry_{entry['id']}"
@@ -2312,7 +2658,15 @@ class DieselPDF(tk.Tk):
         self._push_undo({"type": "add", "entries": [entry]})
         self._add_markup_row(entry)
         self._apply_layer_visibility(entry)
+        if self.select_new_markup_var.get():
+            self.clear_selection()
+            self.selected_entries = [entry]
+            self.draw_selection()
+            self._load_properties_from_selection()
         self._set_status(f"{kind} added")
+        if not self.keep_tool_active_var.get() and self.current_tool not in {"hand", "select", "select_text"}:
+            self._set_tool("select")
+        return entry
 
     def _layer_visible(self, name):
         layer = next((layer for layer in self.layers if layer["name"] == name), None)
@@ -2331,13 +2685,21 @@ class DieselPDF(tk.Tk):
 
     def _add_markup_row(self, entry):
         iid = str(entry["id"])
+        values = (
+            entry.get("subject") or entry["kind"],
+            self.current_page + 1,
+            entry.get("layer", "0"),
+            entry.get("comment") or entry["detail"],
+        )
         if not self.markup_list.exists(iid):
             self.markup_list.insert(
                 "",
                 "end",
                 iid=iid,
-                values=(entry["kind"], self.current_page + 1, entry.get("layer", "0"), entry["detail"]),
+                values=values,
             )
+        else:
+            self.markup_list.item(iid, values=values)
 
     def _markup_selected(self, event=None):
         selected = self.markup_list.selection()
@@ -2367,11 +2729,14 @@ class DieselPDF(tk.Tk):
             return
         with open(path, "w", newline="", encoding="utf-8-sig") as handle:
             writer = csv.writer(handle)
-            writer.writerow(["Page", "Subject", "Detail", "Layer", "Stroke", "Fill", "Thickness", "Opacity"])
+            writer.writerow(["Page", "Subject", "Comment", "Status", "Type", "Detail", "Layer", "Stroke", "Fill", "Thickness", "Opacity"])
             for page_number, page in enumerate(self.pages, start=1):
                 for entry in page.get("entries", []):
                     writer.writerow([
                         page_number,
+                        entry.get("subject") or entry.get("kind", "Markup"),
+                        entry.get("comment", ""),
+                        entry.get("status", "None"),
                         entry.get("kind", "Markup"),
                         entry.get("detail", ""),
                         entry.get("layer", "0"),
@@ -2493,27 +2858,29 @@ class DieselPDF(tk.Tk):
     def select_at(self, x, y, event):
         entry = self._entry_at(x, y)
         ctrl = bool(event.state & 0x0004)
-        if not ctrl:
-            self.clear_selection()
         if not entry:
+            if not ctrl:
+                self.clear_selection()
             self._set_status("No markup selected")
-            return
+            return None
         if entry.get("flattened"):
             self._set_status("Flattened markup is locked")
-            return
+            return None
         group_entries = [candidate for candidate in self._entries_in_group(entry) if not candidate.get("flattened")]
         selected = all(candidate in self.selected_entries for candidate in group_entries)
-        if selected:
+        if ctrl and selected:
             for candidate in group_entries:
-                if candidate in self.selected_entries:
-                    self.selected_entries.remove(candidate)
+                self.selected_entries.remove(candidate)
         else:
+            if not ctrl:
+                self.clear_selection()
             for candidate in group_entries:
                 if candidate not in self.selected_entries:
                     self.selected_entries.append(candidate)
         self.draw_selection()
         self._load_properties_from_selection()
         self._set_status(f"{len(self.selected_entries)} markup(s) selected")
+        return entry
 
     def clear_selection(self):
         for box in self.selection_boxes:
@@ -2535,6 +2902,8 @@ class DieselPDF(tk.Tk):
         bbox = self._selection_bbox()
         if bbox:
             self._draw_resize_handles(bbox)
+        if len(self.selected_entries) == 1 and self.selected_entries[0].get("kind") == "Callout":
+            self._draw_callout_tip_handle(self.selected_entries[0])
 
     def _entry_bbox(self, entry):
         boxes = [self.canvas.bbox(item) for item in entry["items"] if self.canvas.itemcget(item, "state") != "hidden"]
@@ -2569,6 +2938,25 @@ class DieselPDF(tk.Tk):
             self.resize_handles.append({"item": item, "anchor": anchor})
             self.canvas.tag_raise(item)
 
+    def _draw_callout_tip_handle(self, entry):
+        arrow = next(
+            (
+                item for item in entry.get("items", [])
+                if self.canvas.type(item) == "line" and self._item_option(item, "arrow")
+            ),
+            None,
+        )
+        if not arrow:
+            return
+        coords = self.canvas.coords(arrow)
+        if len(coords) < 4:
+            return
+        x, y = coords[-2], coords[-1]
+        item = self.canvas.create_rectangle(x - 6, y - 6, x + 6, y + 6, fill="#ffffff", outline="#d65353", width=2)
+        self.selection_boxes.append(item)
+        self.resize_handles.append({"item": item, "anchor": "callout_tip", "entry": entry, "arrow": arrow})
+        self.canvas.tag_raise(item)
+
     def _resize_handle_at(self, x, y):
         for handle in reversed(self.resize_handles):
             coords = self.canvas.coords(handle["item"])
@@ -2577,6 +2965,16 @@ class DieselPDF(tk.Tk):
         return None
 
     def _begin_resize(self, handle, x, y):
+        if handle["anchor"] == "callout_tip":
+            arrow = handle["arrow"]
+            self.drag = {
+                "callout_tip": True,
+                "arrow": arrow,
+                "entry": handle["entry"],
+                "before": {arrow: self.canvas.coords(arrow)[:]},
+            }
+            self._set_status("Drag the red handle to aim the callout arrow")
+            return
         bbox = self._selection_bbox()
         if not bbox:
             return
@@ -2717,7 +3115,32 @@ class DieselPDF(tk.Tk):
         self.font_size_var.set(f"{self._safe_float(entry.get('font_size'), 12):g}")
         self.object_scale_var.set(f"{self._safe_float(entry.get('scale_percent'), 100):g}")
         self.object_rotation_var.set(f"{self._safe_float(entry.get('rotation_deg'), 0):g}")
+        self.subject_var.set(entry.get("subject") or entry.get("kind", "Markup"))
+        self.comment_var.set(entry.get("comment", ""))
+        self.markup_status_var.set(entry.get("status", "None"))
+        if entry.get("calibration_base_pixels"):
+            self.known_distance_var.set(f"{self._safe_float(entry.get('known_distance'), 100):g}")
         self._update_color_buttons()
+
+    def _schedule_metadata_apply(self):
+        pending = getattr(self, "_metadata_apply_job", None)
+        if pending:
+            self.after_cancel(pending)
+        self._metadata_apply_job = self.after(180, self.apply_metadata_to_selected)
+
+    def apply_metadata_to_selected(self):
+        if not self.selected_entries:
+            self._set_status("Markup info defaults updated")
+            return
+        subject = self.subject_var.get().strip()
+        comment = self.comment_var.get().strip()
+        status = self.markup_status_var.get() or "None"
+        for entry in self.selected_entries:
+            entry["subject"] = subject or entry.get("kind", "Markup")
+            entry["comment"] = comment
+            entry["status"] = status
+            self._add_markup_row(entry)
+        self._set_status(f"Updated markup info for {len(self.selected_entries)} item(s)")
 
     def _apply_selection_transform(self):
         bbox = self._selection_bbox()
@@ -3014,7 +3437,9 @@ class DieselPDF(tk.Tk):
             return
         self.library_list.delete(*self.library_list.get_children())
         self.library_catalog = {}
-        category_names = ["Recent Tools", "General", "Review", "Takeoff", "Construction", "Safety", "My Tools"]
+        category_names = ["Recent Tools"]
+        category_names.extend(category for category, _name, _kind in DEFAULT_TOOL_SETS if category not in category_names)
+        category_names.append("My Tools")
         category_nodes = {
             name: self.library_list.insert("", "end", text=name, open=name in {"Recent Tools", "General", "Takeoff", "My Tools"})
             for name in category_names
@@ -3189,6 +3614,80 @@ class DieselPDF(tk.Tk):
                 self.canvas.create_line(cx - 90, cy - 60, cx + 45, cy + 70, fill=stroke, width=3, dash=(5, 4)),
             ]
             entry_kind, detail = "Door Opening", "door swing detail"
+        elif kind == "steel_column":
+            items = [
+                self.canvas.create_rectangle(cx - 48, cy - 48, cx + 48, cy + 48, outline=stroke, width=max(3, width)),
+                self.canvas.create_line(cx - 25, cy - 32, cx - 25, cy + 32, fill=stroke, width=max(4, width)),
+                self.canvas.create_line(cx + 25, cy - 32, cx + 25, cy + 32, fill=stroke, width=max(4, width)),
+                self.canvas.create_line(cx - 25, cy, cx + 25, cy, fill=stroke, width=max(4, width)),
+            ]
+            entry_kind, detail = "Steel Column", "structural steel column"
+        elif kind == "steel_beam":
+            items = [
+                self.canvas.create_line(cx - 100, cy - 24, cx + 100, cy - 24, fill=stroke, width=max(4, width)),
+                self.canvas.create_line(cx - 100, cy + 24, cx + 100, cy + 24, fill=stroke, width=max(4, width)),
+                self.canvas.create_line(cx - 100, cy, cx + 100, cy, fill=stroke, width=max(3, width)),
+                self.canvas.create_line(cx - 100, cy - 35, cx - 100, cy + 35, fill=stroke, width=max(4, width)),
+                self.canvas.create_line(cx + 100, cy - 35, cx + 100, cy + 35, fill=stroke, width=max(4, width)),
+            ]
+            entry_kind, detail = "Steel Beam", "structural steel beam"
+        elif kind == "concrete_area":
+            items = [self.canvas.create_rectangle(cx - 95, cy - 60, cx + 95, cy + 60, outline=stroke, fill=fill or "#f1f3f5", width=width)]
+            for offset in range(-120, 141, 28):
+                items.append(self.canvas.create_line(cx - 95 + offset, cy + 60, cx + 25 + offset, cy - 60, fill=stroke, width=1))
+            entry_kind, detail = "Concrete Area", "concrete hatch"
+        elif kind == "pipe_run":
+            items = [
+                self.canvas.create_line(cx - 110, cy - 14, cx + 110, cy - 14, fill=stroke, width=max(2, width)),
+                self.canvas.create_line(cx - 110, cy + 14, cx + 110, cy + 14, fill=stroke, width=max(2, width)),
+                self.canvas.create_line(cx - 110, cy, cx + 110, cy, fill=stroke, width=1, dash=(8, 5)),
+            ]
+            entry_kind, detail = "Pipe Run", "mechanical pipe"
+        elif kind == "gate_valve":
+            items = [
+                self.canvas.create_line(cx - 110, cy, cx - 48, cy, fill=stroke, width=max(3, width)),
+                self.canvas.create_polygon(cx - 48, cy - 38, cx, cy, cx - 48, cy + 38, outline=stroke, fill=fill or "#ffffff", width=max(2, width)),
+                self.canvas.create_polygon(cx + 48, cy - 38, cx, cy, cx + 48, cy + 38, outline=stroke, fill=fill or "#ffffff", width=max(2, width)),
+                self.canvas.create_line(cx + 48, cy, cx + 110, cy, fill=stroke, width=max(3, width)),
+            ]
+            entry_kind, detail = "Gate Valve", "mechanical gate valve"
+        elif kind == "pump":
+            items = [
+                self.canvas.create_line(cx - 110, cy, cx - 52, cy, fill=stroke, width=max(3, width)),
+                self.canvas.create_oval(cx - 52, cy - 52, cx + 52, cy + 52, outline=stroke, fill=fill or "#ffffff", width=max(3, width)),
+                self.canvas.create_polygon(cx - 18, cy - 28, cx + 34, cy, cx - 18, cy + 28, outline=stroke, fill=stroke, width=2),
+                self.canvas.create_line(cx + 52, cy, cx + 110, cy, fill=stroke, width=max(3, width)),
+            ]
+            entry_kind, detail = "Pump", "mechanical pump"
+        elif kind == "power_outlet":
+            items = [
+                self.canvas.create_oval(cx - 48, cy - 48, cx + 48, cy + 48, outline=stroke, fill=fill or "#ffffff", width=max(3, width)),
+                self.canvas.create_line(cx - 18, cy - 20, cx - 18, cy + 20, fill=stroke, width=max(3, width)),
+                self.canvas.create_line(cx + 18, cy - 20, cx + 18, cy + 20, fill=stroke, width=max(3, width)),
+            ]
+            entry_kind, detail = "Power Outlet", "electrical outlet"
+        elif kind == "light_point":
+            items = [
+                self.canvas.create_oval(cx - 48, cy - 48, cx + 48, cy + 48, outline=stroke, fill=fill or "#ffffff", width=max(3, width)),
+                self.canvas.create_line(cx - 34, cy - 34, cx + 34, cy + 34, fill=stroke, width=max(3, width)),
+                self.canvas.create_line(cx - 34, cy + 34, cx + 34, cy - 34, fill=stroke, width=max(3, width)),
+            ]
+            entry_kind, detail = "Light Point", "electrical light point"
+        elif kind == "survey_point":
+            items = [
+                self.canvas.create_line(cx - 65, cy, cx + 65, cy, fill=stroke, width=2),
+                self.canvas.create_line(cx, cy - 65, cx, cy + 65, fill=stroke, width=2),
+                self.canvas.create_oval(cx - 9, cy - 9, cx + 9, cy + 9, outline=stroke, fill=stroke, width=2),
+                self.canvas.create_text(cx + 18, cy - 18, text="SP", anchor="sw", fill=stroke, font=(style["font_family"], style["font_size"], "bold")),
+            ]
+            entry_kind, detail = "Survey Point", "site survey point"
+        elif kind == "excavation":
+            items = [
+                self.canvas.create_polygon(cx - 105, cy - 50, cx - 45, cy - 70, cx + 35, cy - 60, cx + 105, cy - 20, cx + 80, cy + 58, cx, cy + 72, cx - 85, cy + 48, outline=stroke, fill=fill, width=max(2, width), dash=(8, 5)),
+                self.canvas.create_line(cx - 65, cy - 35, cx + 65, cy + 35, fill=stroke, width=2),
+                self.canvas.create_line(cx - 65, cy + 35, cx + 65, cy - 35, fill=stroke, width=2),
+            ]
+            entry_kind, detail = "Excavation", "site excavation area"
         elif kind == "warning":
             items = [
                 self.canvas.create_polygon(cx, cy - 70, cx + 72, cy + 58, cx - 72, cy + 58, outline="#b56a00", fill="#ffd65a", width=3),
@@ -3369,7 +3868,7 @@ class DieselPDF(tk.Tk):
         paper = self.choose_paper_size("Insert Page")
         if not paper:
             return
-        self.pages.insert(self.current_page + 1, {"paper": paper, "entries": []})
+        self.pages.insert(self.current_page + 1, blank_page(paper))
         self.current_page += 1
         self.paper_var.set(paper)
         self._refresh_page_list()
@@ -3611,6 +4110,7 @@ class DieselPDF(tk.Tk):
 
     def _show_current_page(self):
         self.clear_selection()
+        self._load_current_page_scale()
         for page in self.pages:
             for entry in page["entries"]:
                 for item in entry["items"]:
@@ -3790,12 +4290,15 @@ class DieselPDF(tk.Tk):
                         "source_pdf": path,
                         "width": max(1, int(rect.width * self.pdf_render_scale)),
                         "height": max(1, int(rect.height * self.pdf_render_scale)),
+                        "scale_units_per_px": 25.4 / (72.0 * self.pdf_render_scale),
+                        "scale_unit": "mm",
+                        "scale_label": f"1 px = {25.4 / (72.0 * self.pdf_render_scale):.4f} mm",
                     })
                 doc.close()
-                return pages or [{"paper": "PDF", "entries": [], "pdf_index": 0, "source_pdf": path, "width": paper_pixels("A4")[0], "height": paper_pixels("A4")[1]}]
+                return pages or [{"paper": "PDF", "entries": [], "pdf_index": 0, "source_pdf": path, "width": paper_pixels("A4")[0], "height": paper_pixels("A4")[1], "scale_units_per_px": 25.4 / (72.0 * self.pdf_render_scale), "scale_unit": "mm", "scale_label": f"1 px = {25.4 / (72.0 * self.pdf_render_scale):.4f} mm"}]
             except Exception as exc:
                 messagebox.showerror("Open PDF", f"Could not read PDF pages:\n{exc}")
-                return [{"paper": "PDF", "entries": [], "pdf_index": 0, "source_pdf": path, "width": paper_pixels("A4")[0], "height": paper_pixels("A4")[1]}]
+                return [{"paper": "PDF", "entries": [], "pdf_index": 0, "source_pdf": path, "width": paper_pixels("A4")[0], "height": paper_pixels("A4")[1], "scale_units_per_px": 25.4 / (72.0 * self.pdf_render_scale), "scale_unit": "mm", "scale_label": f"1 px = {25.4 / (72.0 * self.pdf_render_scale):.4f} mm"}]
         messagebox.showerror("Open PDF", "PDF rendering needs PyMuPDF. DieselPDF will install/use the local renderer package.")
         try:
             with open(path, "rb") as handle:
@@ -3804,7 +4307,7 @@ class DieselPDF(tk.Tk):
             count = max(1, len(matches))
         except OSError:
             count = 1
-        return [{"paper": "PDF", "entries": [], "pdf_index": index, "source_pdf": path, "width": paper_pixels("A4")[0], "height": paper_pixels("A4")[1]} for index in range(count)]
+        return [{"paper": "PDF", "entries": [], "pdf_index": index, "source_pdf": path, "width": paper_pixels("A4")[0], "height": paper_pixels("A4")[1], "scale_units_per_px": 25.4 / (72.0 * self.pdf_render_scale), "scale_unit": "mm", "scale_label": f"1 px = {25.4 / (72.0 * self.pdf_render_scale):.4f} mm"} for index in range(count)]
 
     def import_image_page(self):
         paths = filedialog.askopenfilenames(filetypes=[("Images", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff"), ("All files", "*.*")])
@@ -3970,6 +4473,9 @@ class DieselPDF(tk.Tk):
                 "landscape": page_data.get("landscape", False),
                 "width": page_data.get("width"),
                 "height": page_data.get("height"),
+                "scale_units_per_px": page_data.get("scale_units_per_px") or data.get("scale_units_per_px") or DEFAULT_MM_PER_BASE_PX,
+                "scale_unit": page_data.get("scale_unit") or data.get("scale_unit", "mm"),
+                "scale_label": page_data.get("scale_label") or data.get("scale_label", "1 px = 0.3333 mm"),
             }
             self.pages.append(page)
             for entry_data in page_data.get("entries", []):
@@ -3993,7 +4499,7 @@ class DieselPDF(tk.Tk):
         self.current_file = None
         self.current_pdf = None
         self._hide_pdf_image()
-        self.pages = [{"paper": "A4", "entries": []}]
+        self.pages = [blank_page()]
         self.current_page = 0
         self.scale_units_per_px = DEFAULT_MM_PER_BASE_PX
         self.scale_unit = "mm"
@@ -4061,6 +4567,9 @@ class DieselPDF(tk.Tk):
             "landscape": page.get("landscape", False),
             "width": page.get("width"),
             "height": page.get("height"),
+            "scale_units_per_px": page.get("scale_units_per_px", DEFAULT_MM_PER_BASE_PX),
+            "scale_unit": page.get("scale_unit", "mm"),
+            "scale_label": page.get("scale_label", "1 px = 0.3333 mm"),
             "entries": [self._serialize_entry(entry) for entry in page["entries"]],
         }
 
@@ -4097,6 +4606,11 @@ class DieselPDF(tk.Tk):
             "font_size": entry.get("font_size", 12),
             "scale_percent": entry.get("scale_percent", 100),
             "rotation_deg": entry.get("rotation_deg", 0),
+            "subject": entry.get("subject", entry.get("kind", "Markup")),
+            "comment": entry.get("comment", ""),
+            "status": entry.get("status", "None"),
+            "calibration_base_pixels": entry.get("calibration_base_pixels"),
+            "known_distance": entry.get("known_distance"),
             "asset_path": entry.get("asset_path"),
             "objects": objects,
         }
@@ -4149,6 +4663,11 @@ class DieselPDF(tk.Tk):
             "font_size": entry_data.get("font_size", 12),
             "scale_percent": entry_data.get("scale_percent", 100),
             "rotation_deg": entry_data.get("rotation_deg", 0),
+            "subject": entry_data.get("subject", entry_data.get("kind", "Markup")),
+            "comment": entry_data.get("comment", ""),
+            "status": entry_data.get("status", "None"),
+            "calibration_base_pixels": entry_data.get("calibration_base_pixels"),
+            "known_distance": entry_data.get("known_distance"),
             "asset_path": entry_data.get("asset_path"),
         }
         self.next_entry_id = max(self.next_entry_id, entry["id"] + 1)
