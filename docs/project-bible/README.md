@@ -1,0 +1,28 @@
+# Project Bible Reading Guide
+
+Read the numbered documents in ascending order:
+
+- `00_MASTER_INDEX.md`
+- `01_MASTER_GOAL.md`
+- `02_PRODUCT_VISION_AND_SCOPE.md`
+- `03_CURRENT_DIESELPDF_STATE.md`
+- `04_TARGET_ARCHITECTURE.md`
+- `05_ENGINEERING_DATA_MODEL.md`
+- `06_COORDINATE_AND_GRID_SYSTEM.md`
+- `07_PDF_CAD_IFC_PIPELINE.md`
+- `08_ARCHITECTURAL_RECOGNITION.md`
+- `09_STRUCTURAL_TOPOLOGY_AND_LOAD_PATH.md`
+- `10_FEA_AND_SOLVER_STRATEGY.md`
+- `11_AUSTRALIAN_DESIGN_CODE_LAYER.md`
+- `12_DRAWING_GENERATION_AND_QA.md`
+- `13_HUMAN_INPUTS_AND_APPROVAL_GATES.md`
+- `14_VALIDATION_AND_ENGINEERING_ITERATION.md`
+- `15_TEN_PHASE_ROADMAP.md`
+- `16_CODEX_EXECUTION_BRIEF.md`
+- `17_DECISIONS_RISKS_AND_OPEN_QUESTIONS.md`
+- `18_OWNER_ENGINEERING_CONTEXT.md`
+- `19_RESOURCE_AND_DEPENDENCY_SHORTLIST.md`
+
+Then read root `AGENTS.md` and GitHub Issue #2.
+
+Current authorised work: Phase 1 architecture audit and optimum implementation plan only. Stop for Aaron's review before Phase 2.
