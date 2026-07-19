@@ -2,6 +2,15 @@
 
 DieselPDF is a native Windows desktop PDF review, markup, measurement, and takeoff application built with Python and Tkinter. Its tab-specific ribbon keeps the current workflow visible without crowding unrelated tools onto the screen.
 
+## Ultimate goal
+
+DieselPDF's ultimate goal is to become a trusted interface between engineers and
+AI: one coordinated workspace where an engineer can review source drawings,
+guide AI proposals, inspect traceable calculations and geometry, approve or
+reject changes, and produce controlled preliminary engineering outputs. AI is
+an assistant and proposal engine; the engineer remains the decision-maker and
+final approval authority.
+
 ## Quick start
 
 Windows: run `Launch-DieselPDF-App.cmd`.

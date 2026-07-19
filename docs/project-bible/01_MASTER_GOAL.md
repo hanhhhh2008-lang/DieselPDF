@@ -2,7 +2,20 @@
 
 ## Primary objective
 
-Build DieselPDF into an engineering software platform that can receive architectural drawings and produce a coordinated preliminary structural drawing set with traceable calculations, assumptions and QA for structural engineer review.
+Build DieselPDF into a trusted engineer-and-AI interface that can receive architectural drawings, support repeated engineering trial and review, and produce a coordinated preliminary structural drawing set with traceable calculations, assumptions and QA for structural engineer approval.
+
+## Ultimate engineer-AI interface
+
+DieselPDF should be the shared working surface between the engineer and AI. The AI may extract information, propose geometry and structural options, automate repetitive calculations, prepare drawings and identify QA issues. The engineer must be able to inspect the evidence, modify inputs, compare alternatives, reject or approve proposals and retain final control over every engineering decision and issued output.
+
+The interface must preserve:
+
+- source-document provenance and revision history;
+- visible assumptions, uncertainties and missing information;
+- repeatable trial, comparison and review workflows;
+- deterministic calculations and validation evidence;
+- human approval gates from source geometry through final issue;
+- a clear record of what was proposed by AI and what was accepted by the engineer.
 
 ## Target workflow
 
