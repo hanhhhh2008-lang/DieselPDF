@@ -21,6 +21,8 @@ CAD_VENDOR_DIR = os.path.join(APP_DIR, "vendor_cad_py311")
 LIBRARY_PATH = os.path.join(APP_DIR, "dieselpdf-library.json")
 PAGE_ORIGIN = (60, 46)
 DEFAULT_MM_PER_BASE_PX = 1.0 / 3.0
+PRELIMINARY_BANNER = "PRELIMINARY — NOT FOR CONSTRUCTION — ENGINEER REVIEW REQUIRED"
+PRELIMINARY_BANNER_PDF = "PRELIMINARY - NOT FOR CONSTRUCTION - ENGINEER REVIEW REQUIRED"
 
 PAPER_MM = {
     "A0": (841, 1189),
@@ -247,6 +249,46 @@ def import_optional_dependency(module_names, vendor_dir):
         except ValueError:
             pass
     return None, last_error
+
+
+def add_preliminary_banner(fitz, page, text=PRELIMINARY_BANNER_PDF):
+    """Overlay the mandatory engineer-review notice on a generated PDF page."""
+    page_rect = page.rect
+    band_height = min(44.0, max(32.0, page_rect.height * 0.05))
+    band = fitz.Rect(
+        page_rect.x0,
+        page_rect.y1 - band_height,
+        page_rect.x1,
+        page_rect.y1,
+    )
+    page.draw_rect(
+        band,
+        color=(0.70, 0.0, 0.0),
+        fill=(0.70, 0.0, 0.0),
+        width=0.5,
+        stroke_opacity=0.95,
+        fill_opacity=0.92,
+        overlay=True,
+    )
+    text_rect = fitz.Rect(
+        band.x0 + 6,
+        band.y0 + 4,
+        band.x1 - 6,
+        band.y1 - 3,
+    )
+    for font_size in (9, 8, 7, 6, 5):
+        remaining = page.insert_textbox(
+            text_rect,
+            text,
+            fontsize=font_size,
+            fontname="helv",
+            color=(1, 1, 1),
+            align=fitz.TEXT_ALIGN_CENTER,
+            overlay=True,
+        )
+        if remaining >= 0:
+            return band
+    raise RuntimeError("Could not fit the mandatory preliminary notice on the PDF page")
 
 
 class DieselPDF(tk.Tk):
@@ -4967,6 +5009,8 @@ class DieselPDF(tk.Tk):
                 page.draw_oval(fitz.Rect(p0, p1), color=black, width=1)
             elif kind == "text":
                 page.insert_text(pt(cmd.get("point", (0, 0))), str(cmd.get("text", "")), fontsize=max(6, float(cmd.get("height", 12))), color=black)
+        add_preliminary_banner(fitz, page)
+        doc.set_metadata({"subject": PRELIMINARY_BANNER})
         doc.save(path)
         doc.close()
         return True
@@ -5474,6 +5518,8 @@ class DieselPDF(tk.Tk):
                     destination = fitz.Rect(left, top, left + fitted_width, top + fitted_height)
                     target.show_pdf_page(destination, source, int(page_data.get("pdf_index", page_index)), keep_proportion=True, rotate=int(page_data.get("rotation", 0)))
                 self._draw_print_markups(fitz, target, page_data, destination)
+                add_preliminary_banner(fitz, target)
+            output.set_metadata({"subject": PRELIMINARY_BANNER})
             output.save(path, garbage=4, deflate=True)
         finally:
             for source in sources.values():

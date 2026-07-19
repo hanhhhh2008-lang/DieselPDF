@@ -1,6 +1,7 @@
 import importlib.machinery
 import importlib.util
 import os
+import re
 import tempfile
 import time
 
@@ -241,8 +242,28 @@ app._create_print_ready_pdf(print_path, "A4")
 app._create_print_ready_pdf(single_path, "Original", [1])
 with fitz.open(print_path) as printed:
     assert len(printed) == 3
+    for page in printed:
+        extracted = re.sub(r"\s+", "", page.get_text())
+        expected = re.sub(r"\s+", "", module.PRELIMINARY_BANNER_PDF)
+        assert expected in extracted
+    assert printed.metadata.get("subject") == module.PRELIMINARY_BANNER
 with fitz.open(single_path) as printed:
     assert len(printed) == 1
+    extracted = re.sub(r"\s+", "", printed[0].get_text())
+    expected = re.sub(r"\s+", "", module.PRELIMINARY_BANNER_PDF)
+    assert expected in extracted
+    assert printed.metadata.get("subject") == module.PRELIMINARY_BANNER
+
+cad_pdf_path = os.path.join(work, "cad-export.pdf")
+assert app._write_cad_commands_pdf(
+    [{"type": "line", "points": [(0, 0), (100, 0)], "layer": "0"}],
+    cad_pdf_path,
+)
+with fitz.open(cad_pdf_path) as generated:
+    extracted = re.sub(r"\s+", "", generated[0].get_text())
+    expected = re.sub(r"\s+", "", module.PRELIMINARY_BANNER_PDF)
+    assert expected in extracted
+    assert generated.metadata.get("subject") == module.PRELIMINARY_BANNER
 
 count = len(app.pages)
 app.duplicate_page()

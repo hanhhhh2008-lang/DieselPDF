@@ -151,6 +151,27 @@ class OptionalDependencyTests(unittest.TestCase):
                 if vendor in sys.path:
                     sys.path.remove(vendor)
 
+
+class PreliminaryBannerTests(unittest.TestCase):
+    def test_generated_pdf_contains_mandatory_engineer_review_notice(self):
+        fitz, error = APP_MODULE.import_optional_dependency(
+            ("pymupdf", "fitz"),
+            APP_MODULE.PDF_VENDOR_DIR,
+        )
+        if fitz is None:
+            self.skipTest(f"PyMuPDF is unavailable: {error}")
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "preliminary.pdf")
+            document = fitz.open()
+            page = document.new_page(width=300, height=300)
+            APP_MODULE.add_preliminary_banner(fitz, page)
+            document.save(path)
+            document.close()
+            with fitz.open(path) as rendered:
+                extracted = "".join(rendered[0].get_text().split())
+            expected = "".join(APP_MODULE.PRELIMINARY_BANNER_PDF.split())
+            self.assertIn(expected, extracted)
+
 class ApplicationSmokeTests(unittest.TestCase):
     def test_application_constructs_without_opening_a_document(self):
         try:

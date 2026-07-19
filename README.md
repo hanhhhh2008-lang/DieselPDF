@@ -56,6 +56,7 @@ Included workflow areas:
 - Panels: Tool Chest, bookmarks, markups, pages, layers, and reusable library items
 - Page organization: insert, delete, extract, duplicate, merge, split, replace, swap, overlay, crop, resize, rotate, and watermark
 - Conversion tools: image import/export, PDF recompression, Word-compatible RTF, Excel-compatible CSV, PowerPoint export, and CAD exchange
+- Generated print-ready and CAD-derived PDFs always carry `PRELIMINARY - NOT FOR CONSTRUCTION - ENGINEER REVIEW REQUIRED`
 - Project save/open using `.dieselpdf.json`
 - Startup opens in Select mode; `Esc` cancels the current operation and returns to Hand review mode on the Home tab
 - User-created text can be reopened with Select Text or a double-click, then restyled and moved like other markups
@@ -69,6 +70,9 @@ Run the regression smoke test with:
 ```text
 python tests/smoke.py
 ```
+
+Pull requests and working branches are also verified by GitHub Actions across
+Windows, macOS, and a headless Linux smoke environment.
 
 Text CAD script examples:
 
