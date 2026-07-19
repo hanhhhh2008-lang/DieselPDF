@@ -115,6 +115,50 @@ def clamp_box(x0, y0, x1, y1):
     return min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)
 
 
+def line_intersection(first, second, bounded=True, tolerance=1e-9):
+    """Return the intersection of two 2D lines, optionally limited to segments."""
+    x1, y1, x2, y2 = first
+    x3, y3, x4, y4 = second
+    r_x, r_y = x2 - x1, y2 - y1
+    s_x, s_y = x4 - x3, y4 - y3
+    denominator = r_x * s_y - r_y * s_x
+    if abs(denominator) <= tolerance:
+        return None
+    offset_x, offset_y = x3 - x1, y3 - y1
+    first_ratio = (offset_x * s_y - offset_y * s_x) / denominator
+    second_ratio = (offset_x * r_y - offset_y * r_x) / denominator
+    if bounded and not (
+        -tolerance <= first_ratio <= 1 + tolerance
+        and -tolerance <= second_ratio <= 1 + tolerance
+    ):
+        return None
+    return x1 + first_ratio * r_x, y1 + first_ratio * r_y
+
+
+def write_json_atomic(path, data):
+    """Serialize JSON beside the destination, then atomically replace it."""
+    directory = os.path.dirname(os.path.abspath(path))
+    prefix = f".{os.path.basename(path)}."
+    file_descriptor, temporary_path = tempfile.mkstemp(
+        dir=directory,
+        prefix=prefix,
+        suffix=".tmp",
+        text=True,
+    )
+    try:
+        with os.fdopen(file_descriptor, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    except Exception:
+        try:
+            os.unlink(temporary_path)
+        except OSError:
+            pass
+        raise
+
+
 class DieselPDF(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -1002,7 +1046,7 @@ class DieselPDF(tk.Tk):
                         candidates.append((bbox[0], bbox[1], "Insertion"))
 
         if "Intersection" in active or "Apparent Intersection" in active:
-            candidates.extend(self._line_intersections(active))
+            candidates.extend(self._line_intersections(active, near=(x, y)))
 
         if not candidates:
             return x, y, ""
@@ -1031,14 +1075,30 @@ class DieselPDF(tk.Tk):
         t = ((x - ax) * dx + (y - ay) * dy) / length2
         return ax + t * dx, ay + t * dy
 
-    def _line_intersections(self, active):
+    def _line_intersections(self, active, near=None, tolerance=18):
         lines = []
         for entry in self._current_entries():
+            if not self._layer_visible(entry.get("layer", "0")):
+                continue
             for item in entry["items"]:
-                if self.canvas.type(item) == "line":
+                is_visible_line = (
+                    self.canvas.type(item) == "line"
+                    and self.canvas.itemcget(item, "state") != "hidden"
+                )
+                if is_visible_line:
                     coords = self.canvas.coords(item)
                     if len(coords) >= 4:
-                        lines.append((coords[0], coords[1], coords[-2], coords[-1]))
+                        line = (coords[0], coords[1], coords[-2], coords[-1])
+                        if near and "Apparent Intersection" not in active:
+                            x, y = near
+                            min_x, max_x = sorted((line[0], line[2]))
+                            min_y, max_y = sorted((line[1], line[3]))
+                            if not (
+                                min_x - tolerance <= x <= max_x + tolerance
+                                and min_y - tolerance <= y <= max_y + tolerance
+                            ):
+                                continue
+                        lines.append(line)
         intersections = []
         for i, first in enumerate(lines):
             for second in lines[i + 1:]:
@@ -1046,17 +1106,17 @@ class DieselPDF(tk.Tk):
                 if point:
                     label = "Intersection" if "Intersection" in active else "Apparent Intersection"
                     intersections.append((point[0], point[1], label))
+                elif "Apparent Intersection" in active:
+                    point = self._infinite_line_intersection(first, second)
+                    if point:
+                        intersections.append((point[0], point[1], "Apparent Intersection"))
         return intersections
 
     def _segment_intersection(self, a, b):
-        x1, y1, x2, y2 = a
-        x3, y3, x4, y4 = b
-        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-        if abs(denom) < 1e-9:
-            return None
-        px = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom
-        py = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom
-        return px, py
+        return line_intersection(a, b, bounded=True)
+
+    def _infinite_line_intersection(self, a, b):
+        return line_intersection(a, b, bounded=False)
 
     def _style(self):
         width = self._safe_float(self.width_var.get(), 2)
@@ -2685,8 +2745,7 @@ class DieselPDF(tk.Tk):
             "bookmarks": list(self.bookmark_list.get(0, "end")),
             "pages": [self._serialize_page(page) for page in self.pages],
         }
-        with open(path, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, indent=2)
+        write_json_atomic(path, data)
         self._set_current_document_title(os.path.basename(path))
         self._sync_active_document()
         self._set_status(f"Saved {os.path.basename(path)}")
