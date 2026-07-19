@@ -1,7 +1,8 @@
 # Phase 1 Current-State Audit
 
-Status: review draft for Aaron Han
-Audit baseline: commit 5b0c5b0 on branch origin/agent/codex-project-handoff, 19 July 2026
+Status: Phase 1 complete; awaiting Aaron Han's architecture review
+Code audit baseline: commit 5b0c5b0 on branch origin/agent/codex-project-handoff, 19 July 2026
+Context reconciliation baseline: commit fe55104 on branch origin/agent/codex-project-handoff, 19 July 2026
 Authorised scope: architecture review only; no production feature implementation
 
 ## Executive finding
@@ -26,11 +27,11 @@ The checkout contains 1,982 tracked working-tree files, dominated by vendored Py
 
 The open origin/codex/dieselpdf-interactions branch was also inspected because it is 2,506 additions and 282 deletions ahead of main in DieselPDF.pyw and adds tests/smoke.py. It improves per-page calibration, markup metadata, interactions and smoke coverage, but continues to serialize Canvas objects without a schema version or domain identity. The Phase 1 architecture remains applicable. Before implementation begins, Aaron must nominate whether that branch/PR is the Phase 2 code baseline.
 
-## Requested context gaps
+## Context reconciliation
 
-AGENTS.md and docs/project/ROADMAP_10_PHASES.md were read. CODEX_HANDOFF.md is not present in the checkout, any fetched branch, repository history or the release ZIP. The roadmap file itself is only nine lines and stops after the first two Phase 1 deliverable bullets. [GitHub Issue #2](https://github.com/hanhhhh2008-lang/DieselPDF/issues/2) is therefore the complete programme and Phase 1 acceptance source. The Project Bible index lists chapters 09 through 17, but the checkout currently stops at chapter 08.
+The initial code-audit snapshot at 5b0c5b0 contained AGENTS.md, Project Bible chapters 00–08 and an incomplete docs/project/ROADMAP_10_PHASES.md stub, but did not yet contain CODEX_HANDOFF.md or the remaining Project Bible. While Phase 1 was being closed, origin/agent/codex-project-handoff advanced to fe55104 with the complete handoff. That update was merged into this branch before final publication.
 
-This gap does not change the Phase 1 boundary, because AGENTS.md, the existing Project Bible chapters and Issue #2 agree on all governing rules. It is recorded as risk R-019 and decision D-019.
+The final review therefore includes CODEX_HANDOFF.md, Project Bible README and numbered chapters 00–34, root AGENTS.md and [GitHub Issue #2](https://github.com/hanhhhh2008-lang/DieselPDF/issues/2). CODEX_HANDOFF.md explicitly supersedes the older roadmap stub with docs/project-bible/15_TEN_PHASE_ROADMAP.md. These sources agree that only the seven Phase 1 review documents are authorised and Aaron must approve progression. Risk R-019 is closed and decision D-019 records the reconciled governing set.
 
 ## Existing function map
 

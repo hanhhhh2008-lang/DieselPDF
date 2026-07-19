@@ -25,7 +25,7 @@ States: accepted by governing brief, proposed, deferred, rejected, superseded
 | D-016 | proposed | retain PyMuPDF technically, conditional on product licence decision | current functionality and capability are strong | commercial/AGPL decision is a packaging gate |
 | D-017 | proposed | adopt a tiered FEA architecture behind neutral AnalysisModel | initial and advanced problems have different solver/validation needs | every adapter publishes capabilities and rejects unsupported cases |
 | D-018 | proposed | pilot PyNite for initial residential frames; prototype Kratos for advanced future work | PyNite offers low-friction bounded scope; Kratos offers broad commercial-friendly capability | neither is production-approved until benchmark gates pass |
-| D-019 | proposed | treat GitHub Issue #2 as the controlling programme where local handoff/roadmap content is missing | CODEX_HANDOFF is absent and roadmap is truncated; remaining sources agree | Aaron should recover or explicitly supersede missing context |
+| D-019 | accepted | use CODEX_HANDOFF.md, Project Bible 00–34, AGENTS.md and Issue #2 as the reconciled governing set; Project Bible chapter 15 supersedes the older roadmap stub | complete handoff was merged from fe55104 before final publication and all sources agree on the Phase 1-only boundary | future work must preserve the same reading order and Aaron approval gate |
 | D-020 | proposed | use strangler migration and immutable legacy import | minimizes loss/regression and preserves current projects | never overwrite a .dieselpdf.json during migration |
 | D-021 | proposed | run external parsers/solvers in isolated subprocesses where practical | protects UI/database and records reproducible runs | define time/resource limits and artefact manifest |
 | D-022 | proposed | store source and solver artefacts by content hash | protects traceability when local paths move | retention/privacy policy required |
@@ -56,12 +56,11 @@ Convert approved proposals into focused ADRs before implementation:
 ## Unresolved decisions for Aaron
 
 1. Which branch is the Phase 2 implementation baseline?
-2. Should missing CODEX_HANDOFF/Project Bible chapters be recovered or replaced by these Phase 1 documents?
-3. Is the product intended to remain closed source, and what third-party licence budget is available?
-4. Is DWG mandatory for the first commercial release or can DXF be the editable exchange?
-5. What Windows/macOS versions and CPU architectures must be supported?
-6. Which SpaceGass projects and result types form the acceptance suite?
-7. What initial analysis cases are mandatory: linear only, P-Delta, modal?
-8. What standards editions and clause-content rights apply?
-9. What engineering review states and roles match Aaron's actual office workflow?
-10. What coordinate tolerances are acceptable for native CAD, vector PDF and scanned plans?
+2. Is the product intended to remain closed source, and what third-party licence budget is available?
+3. Is DWG mandatory for the first commercial release or can DXF be the editable exchange?
+4. What Windows/macOS versions and CPU architectures must be supported?
+5. Which SpaceGass projects and result types form the acceptance suite?
+6. What initial analysis cases are mandatory: linear only, P-Delta, modal?
+7. What standards editions and clause-content rights apply?
+8. What engineering review states and roles match Aaron's actual office workflow?
+9. What coordinate tolerances are acceptable for native CAD, vector PDF and scanned plans?

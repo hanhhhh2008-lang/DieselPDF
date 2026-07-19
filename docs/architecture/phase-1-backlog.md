@@ -17,6 +17,7 @@ Status: Phase 1 documentation complete; implementation items are not authorised 
 - [x] engineering-input checklist
 - [x] Phase 1 close-out code review and focused regression tests
 - [x] bounded intersection snapping and atomic legacy-project saves
+- [x] complete CODEX_HANDOFF.md and Project Bible 00–34 reconciled from fe55104
 - [x] no Phase 2 production code or UI rewrite
 
 ## P0 — Aaron review required before Phase 2
@@ -24,7 +25,7 @@ Status: Phase 1 documentation complete; implementation items are not authorised 
 | ID | Decision/input | Required evidence or answer | Blocks |
 |---|---|---|---|
 | P1-001 | code baseline | choose origin/agent/codex-project-handoff/main or the open interaction PR branch | all implementation |
-| P1-002 | missing context | provide CODEX_HANDOFF.md and missing Project Bible chapters, or approve Phase 1 documents/Issue #2 as their replacement | durable handoff |
+| P1-002 | authoritative context (resolved) | complete CODEX_HANDOFF.md and Project Bible 00–34 merged from fe55104 and reconciled with Issue #2 | none; closed 19 July 2026 |
 | P1-003 | initial building eligibility | confirm NSW Class 1/10, storeys, materials, roof/floor/footing systems and exclusions | domain scope |
 | P1-004 | project coordinate convention | origin/datum policy, X/Y/Z convention, rotation, storey and level practice | Phase 2 |
 | P1-005 | tolerance policy | native CAD, vector PDF, raster PDF, grid snap, node merge and round-trip tolerances | Phase 2 tests |
@@ -173,7 +174,7 @@ Phase 2 is ready only when:
 
 1. all P0 items are answered or explicitly deferred with a non-blocking rationale;
 2. D-008 through D-022 are approved, amended or rejected;
-3. R-001, R-002, R-003, R-004, R-018 and R-019 have accepted treatments;
+3. R-001, R-002, R-003, R-004 and R-018 have accepted treatments; R-019 remains closed;
 4. a dedicated Phase 2 branch is named from the selected baseline;
 5. legacy and coordinate fixtures are available;
 6. Aaron explicitly authorises Phase 2.

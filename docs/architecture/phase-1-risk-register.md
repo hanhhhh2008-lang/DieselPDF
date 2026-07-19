@@ -26,7 +26,7 @@ Treatment priority: 15–25 critical, 8–14 high, 4–7 medium, 1–3 low
 | R-016 | R-Tree precision or indexing is mistaken for exact geometry truth | 3 | 3 | 9 | canonical double-precision geometry, outward query tolerance and exact Shapely predicate after candidate search | Data lead | schema review |
 | R-017 | Source files are moved/changed after a project records only a local path | 4 | 4 | 16 | content-addressed immutable source copies, hashes, manifest and missing-source QA state | Data lead | importer acceptance |
 | R-018 | Open interaction PR and handoff branch diverge, invalidating line-level assumptions or tests | 4 | 3 | 12 | Aaron selects code baseline; rebase architecture branch only after review; rerun audit delta | Aaron + Tech | before Phase 2 branch |
-| R-019 | CODEX_HANDOFF.md and Project Bible chapters 09–17 are missing; roadmap is truncated | 4 | 3 | 12 | recover or recreate authoritative context after Phase 1 review; use Issue #2 as current scope source | Aaron | Phase 1 review |
+| R-019 | A late handoff-branch update leaves the audit based on incomplete or stale programme context | 1 | 2 | 2 | complete CODEX_HANDOFF.md and Project Bible 00–34 merged from fe55104, read and reconciled; older roadmap stub explicitly superseded | Tech lead | closed 19 July 2026 |
 | R-020 | AI proposals are promoted to geometry/design without human approval | 3 | 5 | 15 | proposal records, confidence/provenance, explicit accept command and approval-state tests | Product + Aaron | before AI feature |
 | R-021 | Preliminary outputs are mistaken for construction documents | 3 | 5 | 15 | immutable preliminary banner, issue-state watermark tests and role-based final gate | Aaron + QA | every drawing release |
 | R-022 | Unknown inputs are silently inferred | 4 | 5 | 20 | nullable/unknown states, blocking QA flags, assumption register and approval requirement | Domain lead | schema and UI |
@@ -44,12 +44,11 @@ Treatment priority: 15–25 critical, 8–14 high, 4–7 medium, 1–3 low
 Before Phase 2:
 
 1. Aaron selects the implementation baseline: handoff/main or the interaction PR branch.
-2. Recover or explicitly supersede the missing CODEX_HANDOFF and Project Bible chapters.
-3. Approve project coordinates, calibration records and tolerance policy.
-4. Supply representative legacy projects and expected rendered outputs.
-5. Decide PyMuPDF and ODA commercial licensing direction.
-6. Approve the initial solver pilot and benchmark/reference data.
-7. Freeze initial residential eligibility and exclusions.
+2. Approve project coordinates, calibration records and tolerance policy.
+3. Supply representative legacy projects and expected rendered outputs.
+4. Decide PyMuPDF and ODA commercial licensing direction.
+5. Approve the initial solver pilot and benchmark/reference data.
+6. Freeze initial residential eligibility and exclusions.
 
 ## Risk acceptance policy
 
