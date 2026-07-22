@@ -8,9 +8,24 @@ The engineering owner and final reviewer is Aaron Han, a NSW structural, forensi
 
 ## Current authorised scope
 
-Execute Phase 1 only unless Aaron expressly approves another phase. Phase 1 is an architecture audit and optimum implementation study. Do not begin major production implementation, rewrite the UI or modify `main` directly.
+Phase 1 is complete on Draft PR #4. Aaron expressly authorised Phase 2 on 22 July 2026.
 
-Work on a dedicated branch or worktree. Read all files under `docs/project-bible/` and GitHub Issue #2 before making recommendations.
+Phase 2 is limited to the coordinate and grid core:
+
+- pure domain package skeleton;
+- strict units and points;
+- coordinate systems and affine transforms;
+- one-, two- and three-plus-point calibration with residuals;
+- storeys and physical levels;
+- grids, grid intersections and an in-memory GridManager;
+- centralized tolerance and snapping services;
+- ephemeral Canvas projection mapping;
+- legacy coordinate characterisation tests;
+- ADR and migration documentation.
+
+Do not begin Phase 3 persistence, semantic recognition, structural topology, FEA, Australian Standards design checks or drawing generation without Aaron's next approval. Do not rewrite the Tkinter UI or modify `main` directly.
+
+Work on a dedicated branch or worktree. Read all files under `docs/project-bible/`, the Phase 1 architecture documents and GitHub Issue #2 before changing architecture.
 
 ## Non-negotiable architecture rules
 
@@ -22,7 +37,7 @@ Work on a dedicated branch or worktree. Read all files under `docs/project-bible
 6. AI may propose classifications and structural arrangements but may not silently become final geometry or the final design calculation engine.
 7. Generic FEA and Australian Standards design checks are separate deterministic layers.
 8. All calculations are reproducible, unit-aware, versioned and traceable to inputs, assumptions, code edition and clauses.
-9. Existing `.dieselpdf.json` projects require a tested migration path.
+9. Existing `.dieselpdf.json` projects require a tested, immutable migration path.
 10. All generated drawings remain `PRELIMINARY — NOT FOR CONSTRUCTION — ENGINEER REVIEW REQUIRED` until Aaron approves final issue.
 
 ## Engineering basis
@@ -31,16 +46,13 @@ Use current project-adopted Australian Standards and NCC requirements. Future mo
 
 Cite clauses wherever practicable, show calculations, state assumptions and identify critical missing information. Do not claim equivalence to SpaceGass or ETABS without documented benchmark evidence.
 
-## Phase 1 required outputs
+## Phase 2 completion gate
 
-Create or complete:
+Before Phase 2 is considered complete:
 
-- `docs/architecture/phase-1-current-state-audit.md`
-- `docs/architecture/phase-1-options-comparison.md`
-- `docs/architecture/phase-1-target-architecture.md`
-- `docs/architecture/phase-1-fea-solver-selection.md`
-- `docs/architecture/phase-1-risk-register.md`
-- `docs/architecture/phase-1-decision-log.md`
-- `docs/architecture/phase-1-backlog.md`
-
-Stop after these review documents are complete. Present the exact files changed, recommended architecture, unresolved decisions and engineering inputs required from Aaron.
+- all Phase 2 tests pass;
+- domain dependency-direction tests pass;
+- legacy Canvas/project formulas are characterised;
+- ADR-001 and migration notes are present;
+- a completion report lists assumptions and Phase 3 blockers;
+- Aaron reviews the Phase 2 PR before Phase 3 begins.
