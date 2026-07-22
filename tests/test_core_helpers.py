@@ -2,9 +2,11 @@ import importlib.machinery
 import importlib.util
 import json
 import os
+import sys
 import tempfile
 import tkinter as tk
 import unittest
+import uuid
 from types import SimpleNamespace
 
 
@@ -116,6 +118,60 @@ class AtomicJsonTests(unittest.TestCase):
             self.assertEqual(os.listdir(directory), ["project.dieselpdf.json"])
 
 
+class OptionalDependencyTests(unittest.TestCase):
+    def test_installed_package_precedes_vendor_copy(self):
+        module_name = f"dieselpdf_dependency_{uuid.uuid4().hex}"
+        with tempfile.TemporaryDirectory() as installed, tempfile.TemporaryDirectory() as vendor:
+            with open(os.path.join(installed, f"{module_name}.py"), "w", encoding="utf-8") as handle:
+                handle.write("SOURCE = 'installed'\n")
+            with open(os.path.join(vendor, f"{module_name}.py"), "w", encoding="utf-8") as handle:
+                handle.write("SOURCE = 'vendor'\n")
+            sys.path.insert(0, installed)
+            try:
+                module, error = APP_MODULE.import_optional_dependency(module_name, vendor)
+                self.assertIsNone(error)
+                self.assertEqual(module.SOURCE, "installed")
+                self.assertNotIn(vendor, sys.path)
+            finally:
+                sys.modules.pop(module_name, None)
+                sys.path.remove(installed)
+
+    def test_vendor_package_is_used_as_fallback(self):
+        module_name = f"dieselpdf_dependency_{uuid.uuid4().hex}"
+        with tempfile.TemporaryDirectory() as vendor:
+            with open(os.path.join(vendor, f"{module_name}.py"), "w", encoding="utf-8") as handle:
+                handle.write("SOURCE = 'vendor'\n")
+            try:
+                module, error = APP_MODULE.import_optional_dependency(module_name, vendor)
+                self.assertIsNone(error)
+                self.assertEqual(module.SOURCE, "vendor")
+                self.assertIn(vendor, sys.path)
+            finally:
+                sys.modules.pop(module_name, None)
+                if vendor in sys.path:
+                    sys.path.remove(vendor)
+
+
+class PreliminaryBannerTests(unittest.TestCase):
+    def test_generated_pdf_contains_mandatory_engineer_review_notice(self):
+        fitz, error = APP_MODULE.import_optional_dependency(
+            ("pymupdf", "fitz"),
+            APP_MODULE.PDF_VENDOR_DIR,
+        )
+        if fitz is None:
+            self.skipTest(f"PyMuPDF is unavailable: {error}")
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "preliminary.pdf")
+            document = fitz.open()
+            page = document.new_page(width=300, height=300)
+            APP_MODULE.add_preliminary_banner(fitz, page)
+            document.save(path)
+            document.close()
+            with fitz.open(path) as rendered:
+                extracted = "".join(rendered[0].get_text().split())
+            expected = "".join(APP_MODULE.PRELIMINARY_BANNER_PDF.split())
+            self.assertIn(expected, extracted)
+
 class ApplicationSmokeTests(unittest.TestCase):
     def test_application_constructs_without_opening_a_document(self):
         try:
@@ -125,8 +181,8 @@ class ApplicationSmokeTests(unittest.TestCase):
         try:
             app.withdraw()
             app.update_idletasks()
-            self.assertEqual(app.current_tool, "hand")
-            self.assertEqual(app.pages, [{"paper": "A4", "entries": []}])
+            self.assertEqual(app.current_tool, "select")
+            self.assertEqual(app.pages, [APP_MODULE.blank_page()])
             self.assertEqual(app.active_document_id, "doc_1")
         finally:
             app.destroy()
