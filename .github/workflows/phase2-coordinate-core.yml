@@ -14,11 +14,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install Tk runtime for legacy smoke tests
+      - name: Install core dependencies and Tk runtime
         run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-core.txt
           sudo apt-get update
           sudo apt-get install -y python3-tk xvfb
       - name: Compile
         run: python -m compileall -q dieselpdf tests DieselPDF.pyw
       - name: Unit and regression tests
-        run: xvfb-run -a python -m unittest discover -s tests -v
+        run: xvfb-run -a python -W error::ResourceWarning -m unittest discover -s tests -v
