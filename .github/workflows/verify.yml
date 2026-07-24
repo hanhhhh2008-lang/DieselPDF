@@ -1,0 +1,54 @@
+name: Verify DieselPDF
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: Core tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-desktop.txt
+      - name: Install desktop dependencies
+        run: python -m pip install -r requirements-desktop.txt
+      - name: Run core regression tests
+        run: python -m unittest -v tests/test_core_helpers.py
+      - name: Compile the application
+        run: python -m py_compile DieselPDF.pyw
+
+  smoke:
+    name: Full PDF interaction smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-desktop.txt
+      - name: Install GUI and desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes python3-tk xvfb
+          python -m pip install -r requirements-desktop.txt
+      - name: Run smoke workflow with a virtual display
+        run: xvfb-run -a python tests/smoke.py

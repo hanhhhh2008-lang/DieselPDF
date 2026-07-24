@@ -1,0 +1,64 @@
+{
+  "app": "DieselPDF 2026",
+  "source_file": "architectural-rev-b.pdf",
+  "pdf_file": "architectural-rev-b.pdf",
+  "scale_units_per_px": 1.0,
+  "scale_unit": "mm",
+  "scale_label": "1 px = 1 mm",
+  "unit": "mm",
+  "layers": [
+    {"name": "0", "visible": true, "locked": false},
+    {"name": "Review", "visible": true, "locked": false}
+  ],
+  "current_layer": "Review",
+  "bookmarks": ["Ground floor"],
+  "legacy_project_note": "This unknown field must be reported and retained",
+  "pages": [
+    {
+      "paper": "A4",
+      "pdf_index": 0,
+      "width": 630,
+      "height": 891,
+      "legacy_page_note": "retain me",
+      "entries": [
+        {
+          "id": 1,
+          "kind": "Line",
+          "detail": "Grid candidate",
+          "group": null,
+          "flattened": false,
+          "layer": "Review",
+          "objects": [
+            {
+              "type": "line",
+              "coords": [60, 937, 160, 837],
+              "fill": "#ff0000",
+              "outline": "",
+              "width": "2",
+              "dash": "",
+              "arrow": "none",
+              "text": "",
+              "font": "",
+              "stipple": "",
+              "legacy_object_note": "retain me too"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "kind": "Shapes",
+          "detail": "Mixed legacy geometry",
+          "group": "group_1",
+          "flattened": false,
+          "layer": "Review",
+          "objects": [
+            {"type": "rectangle", "coords": [200, 300, 320, 420], "fill": "", "outline": "#00aa00", "width": "2", "dash": "", "arrow": "", "text": "", "font": "", "stipple": ""},
+            {"type": "oval", "coords": [350, 300, 450, 400], "fill": "", "outline": "#0071e3", "width": "2", "dash": "", "arrow": "", "text": "", "font": "", "stipple": ""},
+            {"type": "text", "coords": [250, 500], "fill": "#1d1d1f", "outline": "", "width": "", "dash": "", "arrow": "", "text": "Engineer review", "font": "Arial 12", "stipple": ""},
+            {"type": "future_canvas_type", "coords": [500, 500, 540, 540], "fill": "", "outline": "#ff9500", "width": "1", "dash": "5 3", "arrow": "", "text": "", "font": "", "stipple": ""}
+          ]
+        }
+      ]
+    }
+  ]
+}
