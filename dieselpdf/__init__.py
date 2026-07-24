@@ -1,8 +1,9 @@
-"""DieselPDF engineering domain package.
+"""DieselPDF engineering domain and persistence package.
 
-Phase 2 introduces the coordinate, calibration, level, grid, snapping and
-Canvas-projection core without coupling the domain to Tkinter or vendor SDKs.
+Phase 3 adds the durable engineering dataset, SQLite/R-Tree persistence,
+revision/audit controls, JSONL exchange and immutable legacy import while the
+existing Tkinter application remains the composition root.
 """
 
-__all__ = ["domain"]
-__version__ = "0.2.0"
+__all__ = ["domain", "persistence"]
+__version__ = "0.3.0"

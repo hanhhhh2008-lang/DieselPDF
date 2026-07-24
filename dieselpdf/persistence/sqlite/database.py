@@ -9,7 +9,8 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Iterator, Optional, Sequence, Tuple
+from uuid import UUID
 
 from dieselpdf.domain.dataset import ProjectDraft
 
@@ -316,12 +317,20 @@ MIGRATIONS: Tuple[Migration, ...] = (
 )
 
 
+class UnsupportedSchemaVersion(RuntimeError):
+    pass
+
+
 class MigrationManager:
     def __init__(self, migrations: Sequence[Migration] = MIGRATIONS) -> None:
         versions = [migration.version for migration in migrations]
         if versions != sorted(set(versions)):
             raise ValueError("migration versions must be unique and ordered")
         self.migrations = tuple(migrations)
+
+    @property
+    def latest_version(self) -> int:
+        return self.migrations[-1].version if self.migrations else 0
 
     def apply(self, connection: sqlite3.Connection) -> int:
         connection.execute(
@@ -334,6 +343,11 @@ class MigrationManager:
             )
             """
         )
+        current = self.current_version(connection)
+        if current > self.latest_version:
+            raise UnsupportedSchemaVersion(
+                f"database schema {current} is newer than supported {self.latest_version}"
+            )
         existing = {
             int(row["version"]): row
             for row in connection.execute(
@@ -392,10 +406,14 @@ class Database:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 5000")
-        if not self.read_only:
-            connection.execute("PRAGMA journal_mode = WAL")
-            connection.execute("PRAGMA synchronous = FULL")
-            MigrationManager().apply(connection)
+        try:
+            if not self.read_only:
+                connection.execute("PRAGMA journal_mode = WAL")
+                connection.execute("PRAGMA synchronous = FULL")
+                MigrationManager().apply(connection)
+        except Exception:
+            connection.close()
+            raise
         self.connection = connection
         return connection
 
@@ -454,8 +472,17 @@ class ProjectBundle:
         }
         bundle._write_json_atomic(bundle.manifest_path, manifest)
         database = Database(bundle.database_path)
-        database.open()
-        database.close()
+        try:
+            from .repository import DatasetRepository
+
+            repository = DatasetRepository(database.open())
+            repository.create_project(
+                project,
+                actor_id="project-bundle",
+                reason="Create project bundle",
+            )
+        finally:
+            database.close()
         return bundle
 
     @classmethod
