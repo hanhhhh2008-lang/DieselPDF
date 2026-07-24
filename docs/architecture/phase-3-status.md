@@ -30,7 +30,19 @@ Status: implementation complete on `agent/phase-3-dataset-persistence`; review r
 5. failed revisions roll back without partial records;
 6. JSONL round trip preserves IDs, revisions and audit counts;
 7. legacy import preserves every supported or unsupported source object;
-8. the original legacy file hash remains unchanged.
+8. the original legacy file hash remains unchanged;
+9. the complete repository compiles under Python 3.11;
+10. tests run with `ResourceWarning` treated as an error;
+11. Phase 2 compatibility CI and Phase 3 engineering-dataset CI both completed successfully on the formal Phase 3 head.
+
+## CI configuration
+
+The Phase 3 branch contains two relevant checks:
+
+- `Phase 2 coordinate core` verifies that the new persistence layer does not regress the inherited coordinate, calibration, level, Grid, snapping and legacy-coordinate core;
+- `Phase 3 engineering dataset` installs `requirements-core.txt`, compiles `dieselpdf`, `tests` and `DieselPDF.pyw`, then runs the complete repository unittest suite under Xvfb with strict resource-warning handling.
+
+The temporary payload bootstrap used only to transfer the large implementation through the GitHub connector has been removed from the Phase 2 base branch and is not part of the Phase 3 pull-request diff.
 
 ## Explicit exclusions
 
