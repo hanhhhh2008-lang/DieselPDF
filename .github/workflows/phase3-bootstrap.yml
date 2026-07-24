@@ -24,9 +24,11 @@ jobs:
           python-version: "3.11"
       - name: Verify and extract implementation
         run: python tools/phase3_payload.py
-      - name: Replace bootstrap with Phase 3 implementation
+      - name: Commit formal Phase 3 files
         run: |
-          rm -rf tools/phase3_payload.py tools/phase3_payload_parts .github/workflows/phase3-bootstrap.yml .phase3-bootstrap-trigger
+          git checkout HEAD -- .github/workflows/phase2-coordinate-core.yml
+          rm -f .github/workflows/phase3-engineering-dataset.yml
+          rm -rf tools/phase3_payload.py tools/phase3_payload_parts .phase3-bootstrap-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
