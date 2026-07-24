@@ -8,17 +8,21 @@ The engineering owner and final reviewer is Aaron Han, a NSW structural, forensi
 
 ## Current authorised scope
 
-Phase 1 is complete on Draft PR #4. Aaron expressly authorised Phase 2 on 22 July 2026.
+Phase 1 is complete on Draft PR #4. Aaron expressly authorised Phase 2 on 22 July 2026, and the Phase 2 implementation plus ADR-001 engineering-policy refinements are complete on Draft PR #6.
 
-Phase 2 is limited to the coordinate and grid core:
+Phase 2 contains the coordinate, datum and grid core:
 
 - pure domain package skeleton;
 - strict units and points;
 - coordinate systems and affine transforms;
-- one-, two- and three-plus-point calibration with residuals;
+- stable project-origin and survey-datum policy;
+- one-, two- and three-plus-point calibration with residuals and acceptance outcomes;
 - storeys and physical levels;
 - grids, grid intersections and an in-memory GridManager;
-- centralized tolerance and snapping services;
+- source-quality tolerance profiles;
+- zoom-aware pointer snapping;
+- automatic, suggested and keep-separate node-merge bands;
+- DPI and scale-derived raster tolerance profiles;
 - ephemeral Canvas projection mapping;
 - legacy coordinate characterisation tests;
 - ADR and migration documentation.
@@ -46,13 +50,16 @@ Use current project-adopted Australian Standards and NCC requirements. Future mo
 
 Cite clauses wherever practicable, show calculations, state assumptions and identify critical missing information. Do not claim equivalence to SpaceGass or ETABS without documented benchmark evidence.
 
-## Phase 2 completion gate
+## Phase 2 completion record
 
-Before Phase 2 is considered complete:
+Phase 2 is considered implementation-complete because:
 
-- all Phase 2 tests pass;
+- all Phase 2 and complete repository tests pass in GitHub Actions;
 - domain dependency-direction tests pass;
 - legacy Canvas/project formulas are characterised;
-- ADR-001 and migration notes are present;
-- a completion report lists assumptions and Phase 3 blockers;
-- Aaron reviews the Phase 2 PR before Phase 3 begins.
+- ADR-001 incorporates the engineering review conditions;
+- calibration, snapping, node merging, raster uncertainty and datum mapping are explicit and tested;
+- migration notes and a completion report list assumptions and deferred evidence;
+- real legacy client fixtures remain a production-validation input, not unfinished Phase 2 code.
+
+Keep PR #6 in review state until Aaron accepts the final diff. Phase 3 remains blocked pending explicit approval, ADR-002 review-state decisions and project packaging selection.
