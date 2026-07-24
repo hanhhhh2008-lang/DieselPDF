@@ -1,9 +1,9 @@
-name: Phase 2 coordinate core
+name: Phase 3 engineering dataset
 
 on:
   push:
     branches:
-      - agent/phase-2-coordinate-grid-core
+      - agent/phase-3-dataset-persistence
   pull_request:
 
 jobs:
