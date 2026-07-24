@@ -1,1 +1,1 @@
-Trigger the Phase 3 payload workflow from the stacked PR base workflow.
+Trigger the chunked Phase 3 payload workflow after all verified parts are present.
